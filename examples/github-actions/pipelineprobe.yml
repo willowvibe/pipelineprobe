@@ -1,0 +1,41 @@
+name: PipelineProbe CI Example
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  pipelineprobe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pipelineprobe
+          
+      # In a real environment, you might spin up services, compile dbt, etc. here
+      
+      - name: Run PipelineProbe Audit
+        env:
+          PIPELINEPROBE_AIRFLOW_PASSWORD: ${{ secrets.AIRFLOW_PASSWORD }}
+          PIPELINEPROBE_WAREHOUSE_DSN: ${{ secrets.WAREHOUSE_DSN }}
+        run: |
+          # This command will exit with code 1 if the number of critical issues
+          # exceeds the `fail_on_critical` threshold in your pipelineprobe.yml.
+          pipelineprobe audit --config pipelineprobe.yml
+          
+      - name: Upload Report Artifacts
+        if: always() # Upload even if the audit failed (so you can see what failed)
+        uses: actions/upload-artifact@v3
+        with:
+          name: pipelineprobe-reports
+          path: reports/

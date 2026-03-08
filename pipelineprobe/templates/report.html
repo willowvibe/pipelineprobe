@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PipelineProbe Report</title>
+    <style>
+        body { font-family: sans-serif; margin: 40px; }
+        .critical { color: red; font-weight: bold; }
+        .warning { color: orange; font-weight: bold; }
+        .info { color: blue; font-weight: bold; }
+        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <h1>PipelineProbe Audit Report</h1>
+    
+    <h2>Executive Summary</h2>
+    <p><strong>Score:</strong> {{ summary.score }} / 100</p>
+    <p><strong>Critical Issues:</strong> {{ summary.critical_count }}</p>
+    <p><strong>Warnings:</strong> {{ summary.warning_count }}</p>
+
+    <h2>Issues Identified</h2>
+    <table>
+        <tr>
+            <th>Severity</th>
+            <th>Category</th>
+            <th>Summary</th>
+            <th>Recommendation</th>
+        </tr>
+        {% for issue in issues %}
+        <tr>
+            <td class="{{ issue.severity }}">{{ issue.severity|upper }}</td>
+            <td>{{ issue.category|upper }}</td>
+            <td>{{ issue.summary }}</td>
+            <td>{{ issue.recommendation }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4">No issues found! Great job.</td></tr>
+        {% endfor %}
+    </table>
+</body>
+</html>
