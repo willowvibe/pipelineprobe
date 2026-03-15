@@ -13,7 +13,6 @@ class DbtConnector:
         self.config = config
 
     def get_models(self) -> List[DbtModel]:
-        project_dir = Path(self.config.project_dir)
         manifest_path = Path(self.config.manifest_path)
         run_results_path = Path(self.config.run_results_path)
 

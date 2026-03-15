@@ -1,6 +1,5 @@
 import json
-import pytest
-from unittest.mock import AsyncMock, patch, mock_open, MagicMock
+from unittest.mock import patch, MagicMock
 
 from pipelineprobe.config import WarehouseConfig, DbtConfig, AirflowConfig
 from pipelineprobe.connectors.postgres import PostgresConnector
