@@ -96,7 +96,7 @@ def check_stale_dags(context: dict) -> List[Issue]:
             if end_time_aware.tzinfo is None:
                 end_time_aware = end_time_aware.replace(tzinfo=timezone.utc)
                 
-            days_since = (now - end_time_aware).days
+            days_since = (now - end_time_aware).total_seconds() / 86400
             if days_since > stale_threshold_days:
                 issues.append(
                     Issue(

@@ -14,8 +14,8 @@ class AirflowConfig(BaseModel):
 class DbtConfig(BaseModel):
     project_dir: str = "./analytics"
     target: str = "prod"
-    manifest_path: str = "target/manifest.json"
-    run_results_path: str = "target/run_results.json"
+    manifest_path: str = "./analytics/target/manifest.json"
+    run_results_path: str = "./analytics/target/run_results.json"
 
 class WarehouseConfig(BaseModel):
     type: str = "postgres"

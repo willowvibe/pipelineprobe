@@ -9,29 +9,27 @@ from pipelineprobe.connectors.snowflake import SnowflakeConnector
 from pipelineprobe.connectors.bigquery import BigQueryConnector
 from pipelineprobe.connectors.airflow import AirflowConnector
 
-def test_postgres_connector():
+@patch("pipelineprobe.connectors.postgres.psycopg2.connect")
+def test_postgres_connector(mock_connect):
     config = WarehouseConfig(type="postgres", dsn="postgresql://fake")
     connector = PostgresConnector(config)
     
-    with patch("asyncpg.connect", new_callable=AsyncMock) as mock_connect:
-        mock_conn = AsyncMock()
-        # Mocks fetch returning a list of dict-like records
-        mock_conn.fetch.return_value = [{"schemaname": "public", "tablename": "users", "row_count": 100, "has_timestamps": True}]
-        mock_connect.return_value = mock_conn
-        
-        # Test sync wrapper
-        stats_sync = connector.get_stats_sync()
-        assert len(stats_sync) == 1
-        assert stats_sync[0]["has_timestamps"] is True
+    # Mock context manager cursor
+    mock_cursor = mock_connect.return_value.cursor.return_value.__enter__.return_value
+    mock_cursor.fetchall.return_value = [{"schemaname": "public", "tablename": "users", "row_count": 100, "has_timestamps": True}]
+    
+    stats_sync = connector.get_stats_sync()
+    assert len(stats_sync) == 1
+    assert stats_sync[0]["has_timestamps"] is True
 
-def test_postgres_connector_error():
+@patch("pipelineprobe.connectors.postgres.psycopg2.connect")
+def test_postgres_connector_error(mock_connect):
     config = WarehouseConfig(type="postgres", dsn="postgresql://fake")
     connector = PostgresConnector(config)
     
-    with patch("asyncpg.connect", new_callable=AsyncMock) as mock_connect:
-        mock_connect.side_effect = Exception("DB Down")
-        stats = connector.get_stats_sync()
-        assert stats == []
+    mock_connect.side_effect = Exception("DB Down")
+    stats = connector.get_stats_sync()
+    assert stats == []
 
 def test_snowflake_connector_missing_creds():
     # Snowflake connector should validate account, username, password
@@ -128,7 +126,7 @@ def test_dbt_connector_success(tmp_path):
     rr_path = tmp_path / "rr.json"
     rr_path.write_text(json.dumps(rr))
     
-    config = DbtConfig(project_dir=str(tmp_path), manifest_path="manifest.json", run_results_path="rr.json")
+    config = DbtConfig(project_dir=str(tmp_path), manifest_path=str(manifest_path), run_results_path=str(rr_path))
     connector = DbtConnector(config)
     
     models = connector.get_models()
