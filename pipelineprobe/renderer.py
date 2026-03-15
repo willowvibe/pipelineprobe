@@ -22,8 +22,13 @@ class ReportRenderer:
         self.env = Environment(loader=FileSystemLoader(str(template_dir)))
 
     def render_html(self, issues: list[Issue], summary: dict) -> Path:
+        from datetime import datetime
+
         template = self.env.get_template("report.html")
-        html_content = template.render(issues=issues, summary=summary)
+        generated_at = datetime.now().strftime("%Y-%m-%d %H:%M")
+        html_content = template.render(
+            issues=issues, summary=summary, generated_at=generated_at
+        )
         output_path = self.output_dir / "pipelineprobe-report.html"
         with open(output_path, "w") as f:
             f.write(html_content)
