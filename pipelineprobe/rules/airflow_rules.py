@@ -1,4 +1,5 @@
 from typing import List
+from datetime import datetime, timezone
 from pipelineprobe.models import Task, Issue, Dag
 
 def check_missing_retries(context: dict) -> List[Issue]:
@@ -59,7 +60,6 @@ def check_high_failure_rate(context: dict) -> List[Issue]:
                 )
     return issues
 
-from datetime import datetime, timezone
 
 def check_stale_dags(context: dict) -> List[Issue]:
     issues = []
