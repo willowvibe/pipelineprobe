@@ -16,9 +16,18 @@ AIRFLOW_PAGE_LIMIT = 100  # Airflow API max per page
 class AirflowConnector:
     def __init__(self, config: AirflowConfig):
         self.config = config
+        
+        if not self.config.username or not self.config.password:
+            logger.warning(
+                "Airflow credentials missing. Use PIPELINEPROBE_ORCHESTRATOR_USERNAME/PASSWORD "
+                "or update pipelineprobe.yml."
+            )
+            
+        auth = (self.config.username, self.config.password) if self.config.username and self.config.password else None
+        
         self.client = httpx.Client(
             base_url=self.config.base_url,
-            auth=(self.config.username, self.config.password),
+            auth=auth,
             verify=self.config.verify_ssl,
         )
 

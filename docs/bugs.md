@@ -1,213 +1,165 @@
-This is a solid, well-structured repo. The architecture matches the spec perfectly and most of the code is production-quality. Here's the full audit — bugs first, then improvements.
+All 5 previous bugs are confirmed fixed. Here's the full state assessment:
 
 ***
 
-## 🔴 Bugs (Will Break at Runtime)
+## ✅ All Previous Bugs — Confirmed Fixed
 
-### Bug 1 — `asyncio.run()` inside an already-running event loop crashes
-**File:** `pipelineprobe/connectors/postgres.py` line `get_stats_sync()`
+| Bug | Fix Status |
+|-----|-----------|
+| `asyncio.run()` crash → replaced with `psycopg2` sync | ✅ Fixed |
+| `init` YAML key `url` → `base_url` | ✅ Fixed |
+| `postgres_tables` hardcoded key → `warehouse_tables` + `warehouse_type` | ✅ Fixed |
+| dbt manifest double-join path | ✅ Fixed — now `Path(self.config.manifest_path)` directly |
+| `timedelta.days` truncation → `total_seconds() / 86400` | ✅ Fixed |
+| `fail_on_critical` default mismatch → now `5` in both config and init YAML | ✅ Fixed |
+| `report.html` template exists and renders | ✅ Confirmed |
 
-`asyncio.run()` throws `RuntimeError: This event loop is already running` if PipelineProbe is ever called from an async context (FastAPI, Jupyter, any async test runner). This is a latent crash waiting to happen.
+***
 
-**Fix:** Replace the async/sync split entirely. `asyncpg` is overkill for a one-shot audit query. Use `psycopg2` synchronously:
+## 🔴 Remaining Bugs Found in This Pass
+
+### Bug 1 — `stale_dags` leaks a float into the issue message
+**File:** `pipelineprobe/rules/airflow_rules.py` line 92
 
 ```python
-import logging
-from typing import Any, Dict, List
-
-import psycopg2
-import psycopg2.extras
-
-from pipelineprobe.config import WarehouseConfig
-
-logger = logging.getLogger(__name__)
-
-class PostgresConnector:
-    def __init__(self, config: WarehouseConfig):
-        self.config = config
-
-    def get_stats_sync(self) -> List[Dict[str, Any]]:
-        try:
-            conn = psycopg2.connect(self.config.dsn)
-            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-                cur.execute("""
-                    SELECT
-                        t.schemaname,
-                        t.relname AS tablename,
-                        t.n_live_tup AS row_count,
-                        EXISTS (
-                            SELECT 1 FROM information_schema.columns c
-                            WHERE c.table_schema = t.schemaname
-                              AND c.table_name = t.relname
-                              AND c.column_name IN ('updated_at', 'created_at')
-                        ) AS has_timestamps
-                    FROM pg_stat_user_tables t
-                    ORDER BY t.n_live_tup DESC
-                    LIMIT 50
-                """)
-                return [dict(r) for r in cur.fetchall()]
-        except Exception as e:
-            logger.error("Error connecting to Postgres: %s", e)
-            return []
-        finally:
-            if conn:
-                conn.close()
+details=f"No successful execution in the last {days_since} days.",
 ```
 
-Also update `pyproject.toml` — remove `asyncpg`, add `psycopg2-binary`.
+`days_since` is now a `float` (e.g., `7.834567...`). The message reads:
+> *"No successful execution in the last 7.834567291666667 days."*
 
-***
-
-### Bug 2 — `config.py`: `AirflowConfig` field is `base_url` but `init` command writes `url`
-**File:** `pipelineprobe/config.py` line 8 vs `cli.py` `init` command
-
-`AirflowConfig` defines `base_url` as the field name, but the `init` command generates a YAML stub with key `url`. When a user runs `pipelineprobe init` then `pipelineprobe audit`, the `base_url` field gets its default (`http://localhost:8080`) instead of their value because the YAML key doesn't match.
-
-**Fix in `cli.py` init command** — change the generated YAML:
-```yaml
-orchestrator:
-  base_url: "http://localhost:8080"   # ← was "url:"
-  username: "admin"
+That's ugly in a user-facing report. Fix:
+```python
+details=f"No successful execution in the last {days_since:.1f} days.",
 ```
 
 ***
 
-### Bug 3 — `cli.py`: `postgres_tables` hardcoded context key doesn't work for BigQuery/Snowflake rules
-**File:** `pipelineprobe/cli.py` line 66
+### Bug 2 — `check_stale_dags` misses DAGs with only failed recent runs
+**File:** `pipelineprobe/rules/airflow_rules.py` lines 78–95
 
+The stale check only fires when `recent_successes` exists and the latest success is old. But if a DAG has run 20 times and **every single run failed**, `recent_successes` is an empty list — the `if recent_successes:` block is never entered, and the DAG silently passes the stale check even though it hasn't succeeded in months. This is the most dangerous silent miss in the whole rule set.
+
+**Fix:**
 ```python
-"postgres_tables": warehouse_tables,  # Backwards compatible context key
-```
-
-The comment says "backwards compatible" but `postgres_rules.py` reads from `postgres_tables` key while BigQuery and Snowflake also return their data into the same key. This is fine for now — but the `postgres_rules.py` rule will fire on BigQuery/Snowflake data with misleading Postgres-specific recommendations (e.g. "consider partitioning" using Postgres terminology on a BigQuery table).
-
-**Fix:** Use a neutral key and pass warehouse type to the context:
-```python
-context = {
-    "airflow_dags": airflow_dags,
-    "airflow_tasks": airflow_tasks,
-    "dbt_models": dbt_models,
-    "warehouse_tables": warehouse_tables,   # ← neutral key
-    "warehouse_type": cfg.warehouse.type,   # ← pass type for rule conditions
-}
-```
-Update `postgres_rules.py` to read `warehouse_tables` and guard with `if context.get("warehouse_type") == "postgres"`.
-
-***
-
-### Bug 4 — `dbt.py`: manifest path is double-joined
-**File:** `pipelineprobe/connectors/dbt.py` lines 16–17
-
-```python
-manifest_path = project_dir / self.config.manifest_path
-```
-
-`DbtConfig` defaults:
-```python
-project_dir: str = "./analytics"
-manifest_path: str = "target/manifest.json"
-```
-
-So the resolved path becomes `./analytics/target/manifest.json`. But many users set `project_dir` to the dbt project root AND `manifest_path` to a full relative path from CWD like `./analytics/target/manifest.json`. This causes a double-join. The config field name `manifest_path` implies it's already a full path, not relative to `project_dir`.
-
-**Fix:** Make `manifest_path` and `run_results_path` absolute-or-CWD-relative, not relative to `project_dir`:
-```python
-manifest_path = Path(self.config.manifest_path)
-run_results_path = Path(self.config.run_results_path)
-```
-Update defaults in `DbtConfig` to `"./analytics/target/manifest.json"` to match the original intent, and update the generated `init` YAML accordingly.
-
-***
-
-### Bug 5 — `airflow_rules.py`: `check_stale_dags` uses `.days` which truncates — misses sub-day staleness
-**File:** `pipelineprobe/rules/airflow_rules.py` line 93
-
-```python
-days_since = (now - end_time_aware).days
-```
-
-`timedelta.days` is the integer day component only — it **does not round**. A DAG that last succeeded 6 days and 23 hours ago returns `.days == 6`, not 7, so it never triggers the `> 7` check. Use `total_seconds()` instead:
-
-```python
-days_since = (now - end_time_aware).total_seconds() / 86400
-if days_since > stale_threshold_days:
+if not recent_successes:
+    # Has runs but zero successes — always flag as critical, not just warning
+    issues.append(
+        Issue(
+            severity="critical",
+            category="dag",
+            summary=f"DAG {dag.id} has no successful runs in its recent history.",
+            details=f"Last {len(dag.recent_runs)} runs all ended in non-success states.",
+            recommendation="Investigate failures immediately — this DAG has never succeeded recently.",
+            affected_resources=[dag.id],
+        )
+    )
+else:
+    # Has some successes — check if latest one is stale
+    latest_success = sorted(recent_successes, key=lambda r: r.end_time, reverse=True)[0]
+    ...
 ```
 
 ***
 
-## 🟡 Issues That Will Cause Confusion
+### Bug 3 — `pyproject.toml` missing `pytest` and `pytest-mock` in dev dependencies
+**File:** `pyproject.toml`
 
-### Issue 1 — `pyproject.toml` likely missing `asyncpg` / `python-dateutil` / `snowflake-connector-python` as explicit deps
-The connectors import `asyncpg`, `dateutil`, and `snowflake.connector` but without seeing `pyproject.toml` contents fully, these are often missed. Verify the `[project.dependencies]` section includes:
+There are 6 test files but no `[project.optional-dependencies]` or `[tool.hatch.envs]` dev section. A contributor who clones and runs `pip install -e .` then `pytest` will get `ModuleNotFoundError: No module named 'pytest'`. This is a contributor experience blocker.
+
+**Add to `pyproject.toml`:**
 ```toml
-dependencies = [
-  "typer>=0.9",
-  "httpx>=0.27",
-  "pydantic>=2.0",
-  "pydantic-settings>=2.0",
-  "pyyaml>=6.0",
-  "jinja2>=3.1",
-  "python-dateutil>=2.8",
-  "psycopg2-binary>=2.9",       # after fixing Bug 1
-  "snowflake-connector-python>=3.0",
-  "google-cloud-bigquery>=3.0",
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+    "pytest-mock>=3.12",
+    "typer[all]>=0.9",
 ]
 ```
-
-***
-
-### Issue 2 — `cli.py`: `fail_on_critical` default is `5` in config but `0` in `init` YAML
-`ReportConfig` defaults `fail_on_critical: int = 5` but the `init` command generates `fail_on_critical: 0`. A user who runs `init`, gets the YAML, and doesn't edit it will find the audit **always fails on any critical issue**. The defaults should be consistent — pick `5` in both places.
-
-***
-
-### Issue 3 — `renderer.py`: `report.html` template missing — `TemplateNotFound` at runtime
-The `renderer.py` loads `report.html` from `pipelineprobe/templates/` but the `templates/` directory exists — if `report.html` is empty or missing, every audit run fails at the last step with a Jinja2 `TemplateNotFound` error. Verify the template file exists and has actual HTML. If it's a stub, even a minimal one like this is enough to unblock users:
-
-```html
-<!DOCTYPE html>
-<html>
-<head><title>PipelineProbe Report</title></head>
-<body>
-  <h1>Score: {{ summary.score }}/100</h1>
-  <p>Critical: {{ summary.critical_count }} | Warnings: {{ summary.warning_count }}</p>
-  {% for issue in issues %}
-  <div class="{{ issue.severity }}">
-    <strong>{{ issue.summary }}</strong>
-    <p>{{ issue.recommendation }}</p>
-  </div>
-  {% endfor %}
-</body>
-</html>
+Then document in `CONTRIBUTING.md`:
+```bash
+pip install -e ".[dev]"
 ```
 
 ***
 
-## ✅ What's Already Good
+### Bug 4 — `AirflowConfig` still has a `password` hardcoded default of `"admin"`
+**File:** `pipelineprobe/config.py` line 9
 
-| Area | Verdict |
-|------|---------|
-| Overall architecture (connectors / rules / renderer) | Clean, matches spec exactly |
-| Airflow pagination with `offset` loop | Correct |
-| Snowflake CTE approach (avoids correlated subquery restriction) | Smart fix |
-| dbt test count via `depends_on.nodes` traversal | Correct approach |
-| Timezone-aware `datetime.now(timezone.utc)` in rules | Correct |
-| `fail_on_critical` CLI override | Good UX |
-| Partial report on connector failure (returns `[]`) | Resilient |
-| Snowflake missing-credential guard | Correct |
+```python
+password: str = "admin"
+```
+
+If a user runs `pipelineprobe audit` without setting the env var and without editing the YAML, it silently attempts auth with `admin/admin`. Worse, if they're running against a real production Airflow with disabled auth, it will actually connect — and if auth is enabled with different credentials, the error message gives no hint about env vars.
+
+**Fix — remove the default, make it `None` and validate:**
+```python
+password: str | None = None
+```
+Then in `AirflowConnector.__init__`, warn explicitly if password is `None`:
+```python
+if not self.config.password:
+    logger.warning(
+        "No Airflow password set. Set PIPELINEPROBE_AIRFLOW_PASSWORD "
+        "or add 'password' under orchestrator in pipelineprobe.yml"
+    )
+```
 
 ***
 
-## Priority Fix Order
+## 🟡 Issues — Not Bugs, but Will Hurt Before PyPI Publish
+
+### Issue 1 — `report.html` template is functional but bare — won't impress anyone
+At 1.4KB, the current template is a plain HTML table with inline CSS. This is the **primary deliverable** of the entire tool — the thing you show a client or post on LinkedIn. A bare table will make the project look unpolished compared to even a modest Tailwind-styled layout.
+
+**Recommended minimum upgrade for the template:**
+- Add a score ring / traffic-light badge (CSS-only, no JS needed)
+- Group issues by severity with collapsible sections
+- Add a footer: `Generated by PipelineProbe · Built by WillowVibe`
+- Add a timestamp and environment target (Airflow URL, dbt target) in the header
+
+This is entirely a CSS/Jinja2 change — no Python changes needed. It's the highest ROI improvement left in the project.
+
+***
+
+### Issue 2 — No `Dockerfile` or `docker-compose.yml` for local demo
+The README likely mentions Docker but there's no `Dockerfile` in the repo root. Every data engineer's first instinct is `docker run willowvibe/pipelineprobe audit`. Without a Docker image, you lose the "zero install friction" angle that makes OSS tools go viral.
+
+**Minimal `Dockerfile`:**
+```dockerfile
+FROM python:3.11-slim
+WORKDIR /app
+COPY pyproject.toml .
+COPY pipelineprobe/ ./pipelineprobe/
+RUN pip install -e .
+ENTRYPOINT ["pipelineprobe"]
+CMD ["--help"]
+```
+
+***
+
+### Issue 3 — CI workflow likely doesn't run tests (needs verification)
+The only workflow file is `ci.yml` (624 bytes — very small). A minimal CI that only lints but doesn't actually run `pytest` means the "93% test coverage" claim in the commit message is unverified on every PR. Make sure `ci.yml` includes:
+```yaml
+- name: Run tests
+  run: pip install -e ".[dev]" && pytest tests/ -v
+```
+
+***
+
+## Priority Order
 
 ```
-1. Bug 1  — Replace asyncpg/asyncio.run with psycopg2 sync (crash risk)
-2. Bug 2  — Fix init YAML key url → base_url (silent misconfiguration)
-3. Bug 3  — Neutral warehouse_tables context key (wrong rules on wrong warehouse)
-4. Bug 4  — Fix dbt manifest double-join path (FileNotFoundError for all dbt users)
-5. Bug 5  — Use total_seconds() for stale DAG check (off-by-<1-day logic error)
-6. Issue 2 — Align fail_on_critical defaults (unexpected CI failures)
-7. Issue 3 — Confirm report.html template exists and renders
+Fix immediately (before any share):
+  1. Bug 1  — Round days_since float in stale DAG message
+  2. Bug 2  — Handle all-failed DAGs in stale check (critical miss)
+  3. Bug 3  — Add [dev] extras to pyproject.toml
+  4. Bug 4  — Remove hardcoded "admin" password default
+
+Before PyPI / public announcement:
+  5. Issue 1 — Upgrade report.html template (it IS your product demo)
+  6. Issue 2 — Add Dockerfile
+  7. Issue 3 — Verify CI actually runs pytest
 ```
 
-Fix bugs 1–4 before any public share or PyPI publish — they will hit every first-time user.
+The codebase is in genuinely good shape — these are refinements, not structural problems. Fix bugs 1–4 (all small, under 30 minutes total), then focus effort on the report template. That template is your best marketing asset.

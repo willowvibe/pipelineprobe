@@ -25,6 +25,13 @@ dependencies = [
     "snowflake-connector-python>=3.2.0"
 ]
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+    "pytest-mock>=3.12",
+    "typer[all]>=0.9",
+]
+
 [project.scripts]
 pipelineprobe = "pipelineprobe.cli:app"
 
