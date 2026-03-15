@@ -90,12 +90,42 @@ def audit(
 
     typer.secho("Audit completed successfully!", fg=typer.colors.GREEN)
 
+import os
+
 @app.command()
 def init():
     """
     Initialize a pipelineprobe.yml config file in the current directory.
     """
-    typer.echo("Initialized pipelineprobe.yml (Not implemented yet).")
+    if os.path.exists("pipelineprobe.yml"):
+        typer.secho("pipelineprobe.yml already exists.", fg=typer.colors.YELLOW)
+        raise typer.Exit(code=1)
+
+    default_config = """# PipelineProbe Configuration
+
+orchestrator:
+  url: "http://localhost:8080"
+  username: "admin"
+  # Set PIPELINEPROBE_AIRFLOW_PASSWORD in environment instead of hardcoding here
+
+dbt:
+  project_dir: "./dbt"
+  target: "dev"
+
+warehouse:
+  # Set PIPELINEPROBE_WAREHOUSE_DSN in environment
+  # driver is usually derived from DSN (postgresql, snowflake, bigquery, etc)
+
+report:
+  output_dir: "./reports"
+  format: "both"
+  fail_on_critical: 0
+"""
+    with open("pipelineprobe.yml", "w") as f:
+        f.write(default_config)
+    
+    typer.secho("Initialized pipelineprobe.yml successfully.", fg=typer.colors.GREEN)
+
 
 if __name__ == "__main__":
     app()
