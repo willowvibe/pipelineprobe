@@ -72,20 +72,33 @@ def check_stale_dags(context: dict) -> List[Issue]:
         if not dag.is_active:
             continue
             
+        # A DAG with no recent runs at all is inherently stale
+        if not dag.recent_runs:
+            issues.append(
+                Issue(
+                    severity="warning",
+                    category="dag",
+                    summary=f"DAG {dag.id} has no recent runs recorded.",
+                    details="The DAG is active but has never run (or runs were not retrieved).",
+                    recommendation="Verify the scheduler is processing this DAG correctly.",
+                    affected_resources=[dag.id]
+                )
+            )
+            continue
+
         # Check if there is any successful run in recent_runs
         recent_successes = [run for run in dag.recent_runs if run.state == "success" and run.end_time]
         
         if recent_successes:
             # Sort by end_time descending to get latest
             latest_success = sorted(recent_successes, key=lambda r: r.end_time, reverse=True)[0]
-            # Assure latest_success.end_time has timezone info for subtraction
             end_time_aware = latest_success.end_time
             if end_time_aware.tzinfo is None:
                 end_time_aware = end_time_aware.replace(tzinfo=timezone.utc)
                 
             days_since = (now - end_time_aware).days
             if days_since > stale_threshold_days:
-                 issues.append(
+                issues.append(
                     Issue(
                         severity="warning",
                         category="dag",
