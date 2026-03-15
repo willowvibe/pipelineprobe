@@ -47,6 +47,14 @@ pipelineprobe audit --config pipelineprobe.yml
 
 Reports are written to `./reports/` by default.
 
+### ⏱️ 5-Minute Quickstart
+
+Want to see it in action without a local stack? Try our [Quickstart Example](examples/quickstart/README.md):
+```bash
+cd examples/quickstart
+docker compose up --build
+```
+
 ---
 
 ## ⚙️ Configuration
@@ -83,6 +91,15 @@ report:
 | `--config` | Path to config YAML (default: `pipelineprobe.yml`) |
 | `--format` | Override output format: `html`, `json`, or `both` |
 | `--fail-on-critical` | Override the critical issue threshold for CI exits |
+| `--version` | Show version and exit |
+
+### CLI Commands
+
+| Command | Description |
+|---|---|
+| `init` | Initialize a default `pipelineprobe.yml` |
+| `audit` | Run the full audit pipeline |
+| `doctor` | Validate connectivity to source systems |
 
 ---
 
@@ -95,6 +112,31 @@ report:
 | PostgreSQL | ✅ Supported |
 | BigQuery | ✅ Supported |
 | Snowflake | ✅ Supported |
+
+---
+
+## 🔄 Standard Workflows
+
+### 1. Local Audit (Internal Teams)
+Identify issues before they hit production. Run `pipelineprobe audit` locally or manually on a dev machine to verify current infra state.
+
+### 2. CI Quality Gate
+Fail your build when critical issues surface. Use the `--fail-on-critical 0` flag to enforce strict standards. See [CI Guide](docs/ci-integration.md).
+
+### 3. Consulting / One-off Audits
+Perfect for external auditors or consultants. Connect to a client's Airflow/Postgres once, run the audit, and provide the polished HTML report as a deliverable.
+
+---
+
+## 🆚 Comparison
+
+How is PipelineProbe different from full observability platforms?
+
+| Feature | Monitoring Tools (Datadog, Monte Carlo) | Quality Libraries (Soda, GE) | **PipelineProbe** |
+|---|---|---|---|
+| **Focus** | Continuous monitoring & alerting | Row-level data validation | Infrastructure & config audit |
+| **Effort** | High (setup agents/SDKs) | Medium (write YAML expectations) | **Zero (read-only API/metastore)** |
+| **Best For** | On-call engineers | Data engineers | **Consultants / Team Leads** |
 
 ---
 
@@ -119,6 +161,14 @@ PipelineProbe can automatically fail your CI pipeline when critical issues excee
 | [Architecture](docs/architecture.md) | How connectors, rules, and the renderer fit together |
 | [Contributing](CONTRIBUTING.md) | Development setup, testing, PRs |
 | [Changelog](CHANGELOG.md) | Release history |
+
+---
+
+## 🗺️ Roadmap
+
+- [ ] **v0.2.0**: Prefect and Dagster connectors.
+- [ ] **v0.3.0**: Basic cost insights (scanned bytes for BQ/Snowflake).
+- [ ] **v1.0.0**: Comprehensive data lineage support.
 
 ---
 

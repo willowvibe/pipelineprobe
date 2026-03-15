@@ -23,11 +23,24 @@ class ReportRenderer:
 
     def render_html(self, issues: list[Issue], summary: dict) -> Path:
         from datetime import datetime
+        from pipelineprobe import __version__
 
         template = self.env.get_template("report.html")
         generated_at = datetime.now().strftime("%Y-%m-%d %H:%M")
+        
+        # Identify top 3 critical/warning actions
+        top_actions = sorted(
+            [i for i in issues if i.severity in ("critical", "warning")],
+            key=lambda x: (x.severity == "warning", x.category),
+        )[:3]
+
         html_content = template.render(
-            issues=issues, summary=summary, generated_at=generated_at
+            issues=issues,
+            summary=summary,
+            generated_at=generated_at,
+            version=__version__,
+            top_actions=top_actions,
+            metadata=summary.get("metadata", {}),
         )
         output_path = self.output_dir / "pipelineprobe-report.html"
         with open(output_path, "w") as f:
