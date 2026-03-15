@@ -6,8 +6,8 @@ from pydantic_settings import BaseSettings
 class AirflowConfig(BaseModel):
     type: str = "airflow"
     base_url: str = "http://localhost:8080"
-    username: str = "admin"
-    password: str = "admin"
+    username: str | None = None
+    password: str | None = None
     verify_ssl: bool = False
     lookback_days: int = 14
 

@@ -89,7 +89,19 @@ def check_stale_dags(context: dict) -> List[Issue]:
         # Check if there is any successful run in recent_runs
         recent_successes = [run for run in dag.recent_runs if run.state == "success" and run.end_time]
         
-        if recent_successes:
+        if not recent_successes:
+            # Has runs but zero successes — flag as critical
+            issues.append(
+                Issue(
+                    severity="critical",
+                    category="dag",
+                    summary=f"DAG {dag.id} has no successful runs in its recent history.",
+                    details=f"Last {len(dag.recent_runs)} runs all ended in non-success states.",
+                    recommendation="Investigate failures immediately — this DAG has never succeeded recently.",
+                    affected_resources=[dag.id],
+                )
+            )
+        else:
             # Sort by end_time descending to get latest
             latest_success = sorted(recent_successes, key=lambda r: r.end_time, reverse=True)[0]
             end_time_aware = latest_success.end_time
@@ -103,7 +115,7 @@ def check_stale_dags(context: dict) -> List[Issue]:
                         severity="warning",
                         category="dag",
                         summary=f"DAG {dag.id} is stale.",
-                        details=f"No successful execution in the last {days_since} days.",
+                        details=f"No successful execution in the last {days_since:.1f} days.",
                         recommendation="Check if the DAG is still needed, or if it is silently failing to schedule.",
                         affected_resources=[dag.id]
                     )

@@ -1,43 +1,272 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>PipelineProbe Report</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PipelineProbe Audit Report</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: sans-serif; margin: 40px; }
-        .critical { color: red; font-weight: bold; }
-        .warning { color: orange; font-weight: bold; }
-        .info { color: blue; font-weight: bold; }
-        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background-color: #f2f2f2; }
+        :root {
+            --primary: #6366f1;
+            --primary-light: #818cf8;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --critical: #ef4444;
+            --warning: #f59e0b;
+            --info: #3b82f6;
+            --success: #10b981;
+            --border: #e2e8f0;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+        }
+
+        .logo-area h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .logo-area p {
+            margin: 4px 0 0;
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            padding: 24px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .score-card {
+            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+            color: white;
+            border: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        .score-value {
+            font-size: 48px;
+            font-weight: 800;
+            margin: 8px 0;
+        }
+
+        .stat-label {
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            opacity: 0.9;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            margin-top: 4px;
+        }
+
+        .stat-card.critical .stat-value { color: var(--critical); }
+        .stat-card.warning .stat-value { color: var(--warning); }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0 0 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .issue-list {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .issue-item {
+            background: var(--card-bg);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            padding: 20px;
+            border-left-width: 4px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .issue-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .issue-item.critical { border-left-color: var(--critical); }
+        .issue-item.warning { border-left-color: var(--warning); }
+        .issue-item.info { border-left-color: var(--info); }
+
+        .issue-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .issue-badge {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        .badge-critical { background: #fee2e2; color: #991b1b; }
+        .badge-warning { background: #fef3c7; color: #92400e; }
+        .badge-info { background: #dbeafe; color: #1e40af; }
+
+        .issue-category {
+            font-size: 12px;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .issue-summary {
+            font-size: 16px;
+            font-weight: 600;
+            margin: 4px 0;
+        }
+
+        .issue-details {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+        }
+
+        .recommendation {
+            background: #f1f5f9;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+
+        .recommendation strong {
+            color: var(--text-main);
+            display: block;
+            margin-bottom: 2px;
+        }
+
+        footer {
+            margin-top: 60px;
+            padding: 24px 0;
+            border-top: 1px solid var(--border);
+            text-align: center;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .willow-link {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        @media (max-width: 600px) {
+            header { flex-direction: column; align-items: flex-start; gap: 20px; }
+        }
     </style>
 </head>
 <body>
-    <h1>PipelineProbe Audit Report</h1>
-    
-    <h2>Executive Summary</h2>
-    <p><strong>Score:</strong> {{ summary.score }} / 100</p>
-    <p><strong>Critical Issues:</strong> {{ summary.critical_count }}</p>
-    <p><strong>Warnings:</strong> {{ summary.warning_count }}</p>
+    <div class="container">
+        <header>
+            <div class="logo-area">
+                <h1>PipelineProbe</h1>
+                <p>Data Infrastructure Audit Engine</p>
+            </div>
+            <div class="timestamp">
+                <span class="issue-category">Report generated on {{ now().strftime('%Y-%m-%d %H:%M') }}</span>
+            </div>
+        </header>
 
-    <h2>Issues Identified</h2>
-    <table>
-        <tr>
-            <th>Severity</th>
-            <th>Category</th>
-            <th>Summary</th>
-            <th>Recommendation</th>
-        </tr>
-        {% for issue in issues %}
-        <tr>
-            <td class="{{ issue.severity }}">{{ issue.severity|upper }}</td>
-            <td>{{ issue.category|upper }}</td>
-            <td>{{ issue.summary }}</td>
-            <td>{{ issue.recommendation }}</td>
-        </tr>
-        {% else %}
-        <tr><td colspan="4">No issues found! Great job.</td></tr>
-        {% endfor %}
-    </table>
+        <div class="summary-grid">
+            <div class="card score-card">
+                <span class="stat-label">Health Score</span>
+                <span class="score-value">{{ summary.score }}</span>
+                <span class="stat-label">out of 100</span>
+            </div>
+            <div class="card stat-card critical">
+                <span class="stat-label">Critical Issues</span>
+                <div class="stat-value">{{ summary.critical_count }}</div>
+            </div>
+            <div class="card stat-card warning">
+                <span class="stat-label">Warnings</span>
+                <div class="stat-value">{{ summary.warning_count }}</div>
+            </div>
+        </div>
+
+        <h3 class="section-title">Findings Breakdown</h3>
+        <div class="issue-list">
+            {% for issue in issues %}
+            <div class="issue-item {{ issue.severity }}">
+                <div class="issue-header">
+                    <div>
+                        <span class="issue-category">{{ issue.category|upper }}</span>
+                        <div class="issue-summary">{{ issue.summary }}</div>
+                    </div>
+                    <span class="issue-badge badge-{{ issue.severity }}">{{ issue.severity }}</span>
+                </div>
+                <div class="issue-details">{{ issue.details }}</div>
+                <div class="recommendation">
+                    <strong>Recommendation</strong>
+                    {{ issue.recommendation }}
+                </div>
+            </div>
+            {% else %}
+            <div class="card" style="text-align: center; padding: 40px;">
+                <div style="font-size: 48px; margin-bottom: 10px;">🎉</div>
+                <div class="issue-summary">No issues identified!</div>
+                <p class="issue-details">Your data infrastructure is following all evaluated best practices.</p>
+            </div>
+            {% endfor %}
+        </div>
+
+        <footer>
+            Generated by <strong>PipelineProbe</strong> · Built by 
+            <a href="https://www.willowvibe.com" class="willow-link">WillowVibe</a>
+        </footer>
+    </div>
 </body>
 </html>
