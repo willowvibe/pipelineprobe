@@ -1,8 +1,7 @@
 import os
 import tempfile
-
+from unittest.mock import patch
 from typer.testing import CliRunner
-
 from pipelineprobe.cli import app
 
 runner = CliRunner()
@@ -28,9 +27,7 @@ def test_cli_audit_help():
     assert "Run the PipelineProbe audit and generate a report" in result.stdout
 
 
-import os
-import tempfile
-from unittest.mock import patch
+
 
 def test_cli_audit_full():
     with tempfile.TemporaryDirectory() as tmpdir:

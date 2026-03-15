@@ -3,7 +3,7 @@ import logging
 from datetime import timedelta
 
 from pipelineprobe.renderer import ReportRenderer
-from pipelineprobe.models import Issue, Dag, Task
+from pipelineprobe.models import Issue
 
 def test_render_html(tmp_path):
     renderer = ReportRenderer(output_dir=str(tmp_path))
