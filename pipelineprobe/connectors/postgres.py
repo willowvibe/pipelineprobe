@@ -12,11 +12,18 @@ class PostgresConnector:
             conn = await asyncpg.connect(self.config.dsn)
             query = """
                 SELECT 
-                    schemaname, 
-                    relname as tablename, 
-                    n_live_tup as row_count
-                FROM pg_stat_user_tables
-                ORDER BY n_live_tup DESC
+                    t.schemaname, 
+                    t.relname as tablename, 
+                    t.n_live_tup as row_count,
+                    EXISTS (
+                        SELECT 1 
+                        FROM information_schema.columns c 
+                        WHERE c.table_schema = t.schemaname 
+                          AND c.table_name = t.relname 
+                          AND c.column_name IN ('updated_at', 'created_at')
+                    ) as has_timestamps
+                FROM pg_stat_user_tables t
+                ORDER BY t.n_live_tup DESC
                 LIMIT 50;
             """
             rows = await conn.fetch(query)

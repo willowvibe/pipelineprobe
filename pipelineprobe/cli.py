@@ -13,12 +13,22 @@ app = typer.Typer(
 )
 
 @app.command()
-def audit(config: str = typer.Option("pipelineprobe.yml", help="Path to config file")):
+def audit(
+    config: str = typer.Option("pipelineprobe.yml", help="Path to config file"),
+    fail_on_critical: int = typer.Option(None, help="Override fail-on-critical threshold"),
+    format: str = typer.Option(None, help="Override report format (html, json, both)")
+):
     """
     Run the PipelineProbe audit and generate a report.
     """
     typer.echo(f"Loading configuration from {config}...")
     cfg = load_config(config)
+    
+    # Apply CLI overrides
+    if fail_on_critical is not None:
+        cfg.report.fail_on_critical = fail_on_critical
+    if format is not None:
+        cfg.report.format = format
 
     typer.echo("Initializing connectors...")
     airflow_conn = AirflowConnector(cfg.orchestrator)
@@ -26,13 +36,16 @@ def audit(config: str = typer.Option("pipelineprobe.yml", help="Path to config f
     pg_conn = PostgresConnector(cfg.warehouse)
 
     typer.echo("Fetching data from source systems...")
-    # These might fail depending on user's exact setup during MVP testing,
-    # so we gently collect what we can.
+    # Fetch top-level DAGs
     airflow_dags = airflow_conn.get_dags()
     airflow_tasks = []
+    
+    # Wire the actual dag runs and tasks for every returned DAG
     if airflow_dags:
-        # Just grab tasks for first DAG as a stub
-        airflow_tasks = airflow_conn.get_tasks(airflow_dags[0].id)
+        typer.echo(f"Found {len(airflow_dags)} Airflow DAGs. Fetching runs and tasks...")
+        for dag in airflow_dags:
+            dag.recent_runs = airflow_conn.get_dag_runs(dag.id)
+            airflow_tasks.extend(airflow_conn.get_tasks(dag.id))
         
     dbt_models = dbt_conn.get_models()
     postgres_tables = pg_conn.get_stats_sync()
@@ -77,12 +90,42 @@ def audit(config: str = typer.Option("pipelineprobe.yml", help="Path to config f
 
     typer.secho("Audit completed successfully!", fg=typer.colors.GREEN)
 
+import os
+
 @app.command()
 def init():
     """
     Initialize a pipelineprobe.yml config file in the current directory.
     """
-    typer.echo("Initialized pipelineprobe.yml (Not implemented yet).")
+    if os.path.exists("pipelineprobe.yml"):
+        typer.secho("pipelineprobe.yml already exists.", fg=typer.colors.YELLOW)
+        raise typer.Exit(code=1)
+
+    default_config = """# PipelineProbe Configuration
+
+orchestrator:
+  url: "http://localhost:8080"
+  username: "admin"
+  # Set PIPELINEPROBE_AIRFLOW_PASSWORD in environment instead of hardcoding here
+
+dbt:
+  project_dir: "./dbt"
+  target: "dev"
+
+warehouse:
+  # Set PIPELINEPROBE_WAREHOUSE_DSN in environment
+  # driver is usually derived from DSN (postgresql, snowflake, bigquery, etc)
+
+report:
+  output_dir: "./reports"
+  format: "both"
+  fail_on_critical: 0
+"""
+    with open("pipelineprobe.yml", "w") as f:
+        f.write(default_config)
+    
+    typer.secho("Initialized pipelineprobe.yml successfully.", fg=typer.colors.GREEN)
+
 
 if __name__ == "__main__":
     app()

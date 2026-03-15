@@ -1,0 +1,40 @@
+name: PipelineProbe Nightly Audit
+
+on:
+  schedule:
+    # Run every night at 2:00 AM UTC
+    - cron: '0 2 * * *'
+  # Allow manual trigger
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install PipelineProbe
+        run: pip install pipelineprobe
+
+      - name: Run Pipeline Audit
+        env:
+          PIPELINEPROBE_AIRFLOW_PASSWORD: ${{ secrets.AIRFLOW_PASSWORD }}
+          PIPELINEPROBE_WAREHOUSE_DSN: ${{ secrets.WAREHOUSE_DSN }}
+        run: |
+          pipelineprobe audit \
+            --config pipelineprobe.yml \
+            --format both \
+            --fail-on-critical 5
+
+      - name: Upload HTML Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pipelineprobe-report
+          path: reports/pipelineprobe-report.html

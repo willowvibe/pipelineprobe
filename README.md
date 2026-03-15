@@ -27,8 +27,7 @@ report:
   fail_on_critical: 2
 ```
 
-> [!NOTE] Placeholder for Screenshot
-> *A screenshot of the PipelineProbe Dashboard will go here once the UI is finalized.*
+![PipelineProbe HTML Report Screenshot](docs/report-screenshot.png)
 
 ## CI/CD Integration
 PipelineProbe can automatically fail your CI pipeline if too many critical issues are detected. See the [CI Integration Guide](docs/ci-integration.md) for details.
