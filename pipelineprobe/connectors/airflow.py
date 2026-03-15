@@ -16,15 +16,19 @@ AIRFLOW_PAGE_LIMIT = 100  # Airflow API max per page
 class AirflowConnector:
     def __init__(self, config: AirflowConfig):
         self.config = config
-        
+
         if not self.config.username or not self.config.password:
             logger.warning(
                 "Airflow credentials missing. Use PIPELINEPROBE_ORCHESTRATOR_USERNAME/PASSWORD "
                 "or update pipelineprobe.yml."
             )
-            
-        auth = (self.config.username, self.config.password) if self.config.username and self.config.password else None
-        
+
+        auth = (
+            (self.config.username, self.config.password)
+            if self.config.username and self.config.password
+            else None
+        )
+
         self.client = httpx.Client(
             base_url=self.config.base_url,
             auth=auth,
@@ -76,9 +80,15 @@ class AirflowConnector:
                 start_str = r.get("start_date")
                 end_str = r.get("end_date")
                 # Fall back to execution_date if start_date missing (older Airflow versions)
-                start_time = parse_date(start_str) if start_str else parse_date(r["execution_date"])
+                start_time = (
+                    parse_date(start_str)
+                    if start_str
+                    else parse_date(r["execution_date"])
+                )
                 end_time = parse_date(end_str) if end_str else None
-                runs.append(DagRun(state=state, start_time=start_time, end_time=end_time))
+                runs.append(
+                    DagRun(state=state, start_time=start_time, end_time=end_time)
+                )
             return runs
         except Exception as e:
             logger.error("Error fetching DAG runs for %s: %s", dag_id, e)

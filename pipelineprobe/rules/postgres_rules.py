@@ -1,6 +1,7 @@
 from typing import List, Dict, Any
 from pipelineprobe.models import Issue
 
+
 def check_large_tables(context: dict) -> List[Issue]:
     issues = []
     if context.get("warehouse_type") != "postgres":
@@ -15,10 +16,11 @@ def check_large_tables(context: dict) -> List[Issue]:
                     summary=f"Table '{table.get('tablename')}' in schema '{table.get('schemaname')}' is very large.",
                     details=f"Row count: {table.get('row_count')}.",
                     recommendation="Consider partitioning the table to improve query performance.",
-                    affected_resources=[table.get('tablename') or '<unknown>']
+                    affected_resources=[table.get("tablename") or "<unknown>"],
                 )
             )
     return issues
+
 
 def check_missing_timestamps(context: dict) -> List[Issue]:
     issues = []
@@ -35,10 +37,11 @@ def check_missing_timestamps(context: dict) -> List[Issue]:
                     summary=f"Table '{table.get('tablename')}' in schema '{table.get('schemaname')}' has no updated_at/created_at columns.",
                     details=f"Row count is {table.get('row_count')} but no audit timestamps exist.",
                     recommendation="Add updated_at / created_at columns for incremental ingestion and auditing.",
-                    affected_resources=[table.get('tablename') or '<unknown>']
+                    affected_resources=[table.get("tablename") or "<unknown>"],
                 )
             )
     return issues
+
 
 def register_postgres_rules(engine):
     engine.register_rule(check_large_tables)

@@ -18,32 +18,40 @@ app = typer.Typer(
     add_completion=False,
 )
 
+
 @app.command()
 def audit(
     config: str = typer.Option("pipelineprobe.yml", help="Path to config file"),
-    fail_on_critical: int = typer.Option(None, help="Override fail-on-critical threshold"),
-    report_format: str = typer.Option(None, "--format", help="Override report format: html | json | both")
+    fail_on_critical: int = typer.Option(
+        None, help="Override fail-on-critical threshold"
+    ),
+    report_format: str = typer.Option(
+        None, "--format", help="Override report format: html | json | both"
+    ),
 ):
     """
     Run the PipelineProbe audit and generate a report.
     """
     typer.echo(f"Loading configuration from {config}...")
     cfg = load_config(config)
-    
+
     # Apply CLI overrides
     if fail_on_critical is not None:
         cfg.report.fail_on_critical = fail_on_critical
     if report_format is not None:
         valid_formats = {"html", "json", "both"}
         if report_format not in valid_formats:
-            typer.secho(f"Invalid --format '{report_format}'. Must be one of: {', '.join(sorted(valid_formats))}", fg=typer.colors.RED)
+            typer.secho(
+                f"Invalid --format '{report_format}'. Must be one of: {', '.join(sorted(valid_formats))}",
+                fg=typer.colors.RED,
+            )
             raise typer.Exit(code=1)
         cfg.report.format = report_format
 
     typer.echo("Initializing connectors...")
     airflow_conn = AirflowConnector(cfg.orchestrator)
     dbt_conn = DbtConnector(cfg.dbt)
-    
+
     if cfg.warehouse.type == "bigquery":
         typer.echo("Using BigQuery connector...")
         warehouse_conn = BigQueryConnector(cfg.warehouse)
@@ -58,14 +66,16 @@ def audit(
     # Fetch top-level DAGs
     airflow_dags = airflow_conn.get_dags()
     airflow_tasks = []
-    
+
     # Wire the actual dag runs and tasks for every returned DAG
     if airflow_dags:
-        typer.echo(f"Found {len(airflow_dags)} Airflow DAGs. Fetching runs and tasks...")
+        typer.echo(
+            f"Found {len(airflow_dags)} Airflow DAGs. Fetching runs and tasks..."
+        )
         for dag in airflow_dags:
             dag.recent_runs = airflow_conn.get_dag_runs(dag.id)
             airflow_tasks.extend(airflow_conn.get_tasks(dag.id))
-        
+
     dbt_models = dbt_conn.get_models()
     warehouse_tables = warehouse_conn.get_stats_sync()
 
@@ -90,26 +100,28 @@ def audit(
         "score": score,
         "critical_count": critical_count,
         "warning_count": warning_count,
-        "total_issues": len(issues)
+        "total_issues": len(issues),
     }
 
     typer.echo("Rendering reports...")
     renderer = ReportRenderer(cfg.report.output_dir)
-    
+
     if cfg.report.format in ("html", "both"):
         html_path = renderer.render_html(issues, summary)
         typer.echo(f"HTML report generated at: {html_path}")
-        
+
     if cfg.report.format in ("json", "both"):
         json_path = renderer.render_json(issues, summary)
         typer.echo(f"JSON report generated at: {json_path}")
-        
+
     if critical_count > cfg.report.fail_on_critical:
-        typer.secho(f"Audit failed! Found {critical_count} critical issues (threshold: {cfg.report.fail_on_critical}).", fg=typer.colors.RED)
+        typer.secho(
+            f"Audit failed! Found {critical_count} critical issues (threshold: {cfg.report.fail_on_critical}).",
+            fg=typer.colors.RED,
+        )
         raise typer.Exit(code=1)
 
     typer.secho("Audit completed successfully!", fg=typer.colors.GREEN)
-
 
 
 @app.command()
@@ -145,7 +157,7 @@ report:
 """
     with open("pipelineprobe.yml", "w") as f:
         f.write(default_config)
-    
+
     typer.secho("Initialized pipelineprobe.yml successfully.", fg=typer.colors.GREEN)
 
 
