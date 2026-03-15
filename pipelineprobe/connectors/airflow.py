@@ -34,9 +34,66 @@ class AirflowConnector:
             return []
 
     def get_dag_runs(self, dag_id: str) -> List[DagRun]:
-        # Stub implementation
-        return []
+        try:
+            # Fetch last N runs, ordered by execution_date descending
+            # Airflow API uses limit for pagination. We fetch top 20 for MVP.
+            response = self.client.get(f"/api/v1/dags/{dag_id}/dagRuns", params={"limit": 20, "order_by": "-execution_date"})
+            response.raise_for_status()
+            runs_data = response.json().get("dag_runs", [])
+            runs = []
+            
+            from dateutil.parser import parse as parse_date
+            
+            for r in runs_data:
+                state = r.get("state", "unknown")
+                start_str = r.get("start_date")
+                end_str = r.get("end_date")
+                
+                start_time = parse_date(start_str) if start_str else parse_date(r.get("execution_date"))
+                end_time = parse_date(end_str) if end_str else None
+                
+                runs.append(
+                    DagRun(
+                        state=state,
+                        start_time=start_time,
+                        end_time=end_time
+                    )
+                )
+            return runs
+        except Exception as e:
+            print(f"Error fetching DAG runs for {dag_id}: {e}")
+            return []
 
     def get_tasks(self, dag_id: str) -> List[Task]:
-        # Stub implementation
-        return []
+        try:
+            response = self.client.get(f"/api/v1/dags/{dag_id}/tasks")
+            response.raise_for_status()
+            tasks_data = response.json().get("tasks", [])
+            tasks = []
+            
+            from datetime import timedelta
+            
+            for t in tasks_data:
+                retries = t.get("retries", 0)
+                # Airflow SLA could be represented in seconds or an ISO 8601 duration string 
+                # (if provided via REST depending on Airflow version).
+                # For safety, let's treat it gracefully. We'll simplify to checking if it's there.
+                # Just checking if SLA is truthy for the MVP.
+                has_sla = bool(t.get("sla"))
+                sla_val = timedelta(seconds=1) if has_sla else None
+                 
+                is_email = bool(t.get("email")) # presence of emails means some alerts
+                
+                tasks.append(
+                    Task(
+                        dag_id=dag_id,
+                        task_id=t.get("task_id", ""),
+                        retries=int(retries) if retries is not None else 0,
+                        sla=sla_val,
+                        has_alerts=is_email
+                    )
+                )
+            return tasks
+        except Exception as e:
+            print(f"Error fetching tasks for {dag_id}: {e}")
+            return []

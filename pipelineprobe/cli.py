@@ -13,12 +13,22 @@ app = typer.Typer(
 )
 
 @app.command()
-def audit(config: str = typer.Option("pipelineprobe.yml", help="Path to config file")):
+def audit(
+    config: str = typer.Option("pipelineprobe.yml", help="Path to config file"),
+    fail_on_critical: int = typer.Option(None, help="Override fail-on-critical threshold"),
+    format: str = typer.Option(None, help="Override report format (html, json, both)")
+):
     """
     Run the PipelineProbe audit and generate a report.
     """
     typer.echo(f"Loading configuration from {config}...")
     cfg = load_config(config)
+    
+    # Apply CLI overrides
+    if fail_on_critical is not None:
+        cfg.report.fail_on_critical = fail_on_critical
+    if format is not None:
+        cfg.report.format = format
 
     typer.echo("Initializing connectors...")
     airflow_conn = AirflowConnector(cfg.orchestrator)
@@ -26,13 +36,16 @@ def audit(config: str = typer.Option("pipelineprobe.yml", help="Path to config f
     pg_conn = PostgresConnector(cfg.warehouse)
 
     typer.echo("Fetching data from source systems...")
-    # These might fail depending on user's exact setup during MVP testing,
-    # so we gently collect what we can.
+    # Fetch top-level DAGs
     airflow_dags = airflow_conn.get_dags()
     airflow_tasks = []
+    
+    # Wire the actual dag runs and tasks for every returned DAG
     if airflow_dags:
-        # Just grab tasks for first DAG as a stub
-        airflow_tasks = airflow_conn.get_tasks(airflow_dags[0].id)
+        typer.echo(f"Found {len(airflow_dags)} Airflow DAGs. Fetching runs and tasks...")
+        for dag in airflow_dags:
+            dag.recent_runs = airflow_conn.get_dag_runs(dag.id)
+            airflow_tasks.extend(airflow_conn.get_tasks(dag.id))
         
     dbt_models = dbt_conn.get_models()
     postgres_tables = pg_conn.get_stats_sync()

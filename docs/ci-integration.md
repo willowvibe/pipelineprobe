@@ -4,7 +4,7 @@ PipelineProbe is designed to run seamlessly in your continuous integration and d
 
 ## Setting up GitHub Actions
 
-We provide an example GitHub Actions workflow at `examples/github-actions/pipelineprobe.yml`. Below is the core logic:
+We provide an example GitHub Actions workflow at `examples/github_action.yml`. Below is the core logic:
 
 ```yaml
       - name: Run PipelineProbe Audit
@@ -12,7 +12,10 @@ We provide an example GitHub Actions workflow at `examples/github-actions/pipeli
           PIPELINEPROBE_AIRFLOW_PASSWORD: ${{ secrets.AIRFLOW_PASSWORD }}
           PIPELINEPROBE_WAREHOUSE_DSN: ${{ secrets.WAREHOUSE_DSN }}
         run: |
-          pipelineprobe audit --config pipelineprobe.yml
+          pipelineprobe audit \
+            --config pipelineprobe.yml \
+            --format both \
+            --fail-on-critical 5
 ```
 
 ### Authentication and Secrets

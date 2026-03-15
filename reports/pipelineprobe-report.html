@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PipelineProbe Report</title>
+    <style>
+        body { font-family: sans-serif; margin: 40px; }
+        .critical { color: red; font-weight: bold; }
+        .warning { color: orange; font-weight: bold; }
+        .info { color: blue; font-weight: bold; }
+        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <h1>PipelineProbe Audit Report</h1>
+    
+    <h2>Executive Summary</h2>
+    <p><strong>Score:</strong> 76 / 100</p>
+    <p><strong>Critical Issues:</strong> 2</p>
+    <p><strong>Warnings:</strong> 2</p>
+
+    <h2>Issues Identified</h2>
+    <table>
+        <tr>
+            <th>Severity</th>
+            <th>Category</th>
+            <th>Summary</th>
+            <th>Recommendation</th>
+        </tr>
+        
+        <tr>
+            <td class="critical">CRITICAL</td>
+            <td>DAG</td>
+            <td>DAG 'daily_sales_pipeline' has a high failure rate (40%).</td>
+            <td>Investigate the root cause of the frequent failures.</td>
+        </tr>
+        
+        <tr>
+            <td class="critical">CRITICAL</td>
+            <td>DBT</td>
+            <td>dbt model 'fact_mrr' failed in the last run.</td>
+            <td>Investigate and fix the failing model or tests.</td>
+        </tr>
+        
+        <tr>
+            <td class="warning">WARNING</td>
+            <td>WAREHOUSE</td>
+            <td>Table 'stg_events' in schema 'raw' has no updated_at/created_at columns.</td>
+            <td>Add updated_at / created_at columns for incremental ingestion and auditing.</td>
+        </tr>
+        
+        <tr>
+            <td class="warning">WARNING</td>
+            <td>TASK</td>
+            <td>Task 'extract_salesforce' in DAG 'crm_sync' has no retries configured.</td>
+            <td>Configure at least 1-3 retries for the task.</td>
+        </tr>
+        
+    </table>
+</body>
+</html>
