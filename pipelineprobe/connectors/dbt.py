@@ -8,6 +8,7 @@ from pipelineprobe.models import DbtModel
 
 logger = logging.getLogger(__name__)
 
+
 class DbtConnector:
     def __init__(self, config: DbtConfig):
         self.config = config
@@ -17,7 +18,9 @@ class DbtConnector:
         run_results_path = Path(self.config.run_results_path)
 
         if not manifest_path.exists():
-            logger.warning("dbt manifest not found at %s — skipping dbt checks.", manifest_path)
+            logger.warning(
+                "dbt manifest not found at %s — skipping dbt checks.", manifest_path
+            )
             return []
 
         try:

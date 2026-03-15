@@ -13,6 +13,7 @@ def _json_default(obj):
         return obj.total_seconds()
     raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
 
+
 class ReportRenderer:
     def __init__(self, output_dir: str):
         self.output_dir = Path(output_dir)
@@ -30,10 +31,7 @@ class ReportRenderer:
 
     def render_json(self, issues: list[Issue], summary: dict) -> Path:
         output_path = self.output_dir / "report.json"
-        data = {
-            "summary": summary,
-            "issues": [i.model_dump() for i in issues]
-        }
+        data = {"summary": summary, "issues": [i.model_dump() for i in issues]}
         with open(output_path, "w") as f:
             json.dump(data, f, indent=2, default=_json_default)
         return output_path

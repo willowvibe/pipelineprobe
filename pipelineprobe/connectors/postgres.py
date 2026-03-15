@@ -8,6 +8,7 @@ from pipelineprobe.config import WarehouseConfig
 
 logger = logging.getLogger(__name__)
 
+
 class PostgresConnector:
     def __init__(self, config: WarehouseConfig):
         self.config = config
@@ -39,4 +40,3 @@ class PostgresConnector:
         finally:
             if conn:
                 conn.close()
-

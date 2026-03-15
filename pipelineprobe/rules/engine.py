@@ -5,6 +5,7 @@ from pipelineprobe.models import Issue
 
 logger = logging.getLogger(__name__)
 
+
 class RuleEngine:
     def __init__(self):
         self.rules: List[Callable[[Any], List[Issue]]] = []
