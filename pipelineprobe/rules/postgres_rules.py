@@ -3,7 +3,9 @@ from pipelineprobe.models import Issue
 
 def check_large_tables(context: dict) -> List[Issue]:
     issues = []
-    tables: List[Dict[str, Any]] = context.get("postgres_tables", [])
+    if context.get("warehouse_type") != "postgres":
+        return issues
+    tables: List[Dict[str, Any]] = context.get("warehouse_tables", [])
     for table in tables:
         if table.get("row_count", 0) > 10_000_000:
             issues.append(
@@ -20,7 +22,9 @@ def check_large_tables(context: dict) -> List[Issue]:
 
 def check_missing_timestamps(context: dict) -> List[Issue]:
     issues = []
-    tables: List[Dict[str, Any]] = context.get("postgres_tables", [])
+    if context.get("warehouse_type") != "postgres":
+        return issues
+    tables: List[Dict[str, Any]] = context.get("warehouse_tables", [])
     for table in tables:
         # For simplicity, we flag tables > 1,000,000 rows without timestamps
         if table.get("row_count", 0) > 1_000_000 and not table.get("has_timestamps"):

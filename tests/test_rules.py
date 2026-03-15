@@ -58,7 +58,10 @@ def test_check_high_failure_rate():
     assert "failing_dag" in issues[0].affected_resources
 
 def test_check_large_tables(mock_postgres_tables):
-    context = {"postgres_tables": mock_postgres_tables}
+    context = {
+        "warehouse_tables": mock_postgres_tables,
+        "warehouse_type": "postgres"
+    }
     issues = check_large_tables(context)
     
     assert len(issues) == 1
@@ -72,7 +75,10 @@ def test_check_missing_timestamps():
         {"tablename": "huge_with_ts", "row_count": 5_000_000, "has_timestamps": True},
         {"tablename": "small_no_ts", "row_count": 100, "has_timestamps": False}
     ]
-    issues = check_missing_timestamps({"postgres_tables": tables})
+    issues = check_missing_timestamps({
+        "warehouse_tables": tables,
+        "warehouse_type": "postgres"
+    })
     assert len(issues) == 1
     assert "huge_no_ts" in issues[0].affected_resources
 

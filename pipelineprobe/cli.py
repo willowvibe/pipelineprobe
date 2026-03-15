@@ -73,7 +73,8 @@ def audit(
         "airflow_dags": airflow_dags,
         "airflow_tasks": airflow_tasks,
         "dbt_models": dbt_models,
-        "postgres_tables": warehouse_tables, # Backwards compatible context key
+        "warehouse_tables": warehouse_tables,
+        "warehouse_type": cfg.warehouse.type,
     }
 
     typer.echo("Running rule engine...")
@@ -123,13 +124,15 @@ def init():
     default_config = """# PipelineProbe Configuration
 
 orchestrator:
-  url: "http://localhost:8080"
+  base_url: "http://localhost:8080"
   username: "admin"
   # Set PIPELINEPROBE_AIRFLOW_PASSWORD in environment instead of hardcoding here
 
 dbt:
   project_dir: "./dbt"
   target: "dev"
+  manifest_path: "./dbt/target/manifest.json"
+  run_results_path: "./dbt/target/run_results.json"
 
 warehouse:
   # Set PIPELINEPROBE_WAREHOUSE_DSN in environment
@@ -138,7 +141,7 @@ warehouse:
 report:
   output_dir: "./reports"
   format: "both"
-  fail_on_critical: 0
+  fail_on_critical: 5
 """
     with open("pipelineprobe.yml", "w") as f:
         f.write(default_config)
