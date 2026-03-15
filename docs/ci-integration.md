@@ -6,7 +6,7 @@ PipelineProbe is designed to run seamlessly in your continuous integration and d
 
 ## GitHub Actions
 
-We provide a ready-to-use workflow at [`examples/github_action.yml`](../examples/github_action.yml). The core audit step:
+We provide a ready-to-use workflow at [`examples/github-actions/pipelineprobe.yml`](../examples/github-actions/pipelineprobe.yml). The core audit step:
 
 ```yaml
       - name: Run PipelineProbe Audit
