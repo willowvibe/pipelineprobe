@@ -1,7 +1,17 @@
 import json
+from datetime import timedelta
 from pathlib import Path
+
 from jinja2 import Environment, FileSystemLoader
+
 from pipelineprobe.models import Issue
+
+
+def _json_default(obj):
+    """Fallback serializer for types not handled by the default JSON encoder."""
+    if isinstance(obj, timedelta):
+        return obj.total_seconds()
+    raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
 
 class ReportRenderer:
     def __init__(self, output_dir: str):
@@ -25,5 +35,5 @@ class ReportRenderer:
             "issues": [i.model_dump() for i in issues]
         }
         with open(output_path, "w") as f:
-            json.dump(data, f, indent=2)
+            json.dump(data, f, indent=2, default=_json_default)
         return output_path

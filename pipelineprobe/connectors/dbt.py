@@ -1,8 +1,12 @@
 import json
+import logging
 from pathlib import Path
 from typing import List
+
 from pipelineprobe.config import DbtConfig
 from pipelineprobe.models import DbtModel
+
+logger = logging.getLogger(__name__)
 
 class DbtConnector:
     def __init__(self, config: DbtConfig):
@@ -14,25 +18,25 @@ class DbtConnector:
         run_results_path = project_dir / self.config.run_results_path
 
         if not manifest_path.exists():
-            print(f"dbt manifest not found at {manifest_path}")
+            logger.warning("dbt manifest not found at %s — skipping dbt checks.", manifest_path)
             return []
 
         try:
-            with open(manifest_path, 'r') as f:
+            with open(manifest_path, "r") as f:
                 manifest = json.load(f)
         except Exception as e:
-            print(f"Error reading manifest: {e}")
+            logger.error("Error reading manifest: %s", e)
             return []
 
         run_results = {}
         if run_results_path.exists():
             try:
-                with open(run_results_path, 'r') as f:
+                with open(run_results_path, "r") as f:
                     rr = json.load(f)
                     for res in rr.get("results", []):
                         run_results[res.get("unique_id")] = res.get("status", "unknown")
             except Exception as e:
-                print(f"Error reading run_results: {e}")
+                logger.error("Error reading run_results: %s", e)
 
         models = []
         nodes = manifest.get("nodes", {})

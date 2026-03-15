@@ -1,13 +1,19 @@
-import asyncpg
 import asyncio
-from typing import List, Dict, Any
+import logging
+from typing import Any, Dict, List
+
+import asyncpg
+
 from pipelineprobe.config import WarehouseConfig
+
+logger = logging.getLogger(__name__)
 
 class PostgresConnector:
     def __init__(self, config: WarehouseConfig):
         self.config = config
 
     async def get_table_stats(self) -> List[Dict[str, Any]]:
+        conn = None
         try:
             conn = await asyncpg.connect(self.config.dsn)
             query = """
@@ -27,11 +33,13 @@ class PostgresConnector:
                 LIMIT 50;
             """
             rows = await conn.fetch(query)
-            await conn.close()
             return [dict(r) for r in rows]
         except Exception as e:
-            print(f"Error connecting to Postgres: {e}")
+            logger.error("Error connecting to Postgres: %s", e)
             return []
+        finally:
+            if conn:
+                await conn.close()
             
     def get_stats_sync(self) -> List[Dict[str, Any]]:
         return asyncio.run(self.get_table_stats())

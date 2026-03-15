@@ -1,5 +1,9 @@
+import logging
 from typing import List, Callable, Any
+
 from pipelineprobe.models import Issue
+
+logger = logging.getLogger(__name__)
 
 class RuleEngine:
     def __init__(self):
@@ -16,5 +20,5 @@ class RuleEngine:
                 if result:
                     issues.extend(result)
             except Exception as e:
-                print(f"Error running rule {rule.__name__}: {e}")
+                logger.error("Error running rule %s: %s", rule.__name__, e)
         return issues

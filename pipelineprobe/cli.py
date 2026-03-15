@@ -1,5 +1,6 @@
 import typer
 import os
+import logging
 from pipelineprobe.config import load_config
 from pipelineprobe.connectors.airflow import AirflowConnector
 from pipelineprobe.connectors.dbt import DbtConnector
@@ -8,6 +9,8 @@ from pipelineprobe.connectors.bigquery import BigQueryConnector
 from pipelineprobe.connectors.snowflake import SnowflakeConnector
 from pipelineprobe.rules import get_configured_engine
 from pipelineprobe.renderer import ReportRenderer
+
+logger = logging.getLogger(__name__)
 
 app = typer.Typer(
     name="pipelineprobe",
@@ -19,7 +22,7 @@ app = typer.Typer(
 def audit(
     config: str = typer.Option("pipelineprobe.yml", help="Path to config file"),
     fail_on_critical: int = typer.Option(None, help="Override fail-on-critical threshold"),
-    format: str = typer.Option(None, help="Override report format (html, json, both)")
+    report_format: str = typer.Option(None, "--format", help="Override report format: html | json | both")
 ):
     """
     Run the PipelineProbe audit and generate a report.
@@ -30,8 +33,12 @@ def audit(
     # Apply CLI overrides
     if fail_on_critical is not None:
         cfg.report.fail_on_critical = fail_on_critical
-    if format is not None:
-        cfg.report.format = format
+    if report_format is not None:
+        valid_formats = {"html", "json", "both"}
+        if report_format not in valid_formats:
+            typer.secho(f"Invalid --format '{report_format}'. Must be one of: {', '.join(sorted(valid_formats))}", fg=typer.colors.RED)
+            raise typer.Exit(code=1)
+        cfg.report.format = report_format
 
     typer.echo("Initializing connectors...")
     airflow_conn = AirflowConnector(cfg.orchestrator)
