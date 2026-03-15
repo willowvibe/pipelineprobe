@@ -20,6 +20,10 @@ class DbtConfig(BaseModel):
 class WarehouseConfig(BaseModel):
     type: str = "postgres"
     dsn: str = "postgresql://user:pass@localhost:5432/analytics"
+    account: str | None = None
+    project_id: str | None = None
+    username: str | None = None
+    password: str | None = None
 
 class ReportConfig(BaseModel):
     output_dir: str = "./reports"

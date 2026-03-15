@@ -1,8 +1,11 @@
 import typer
+import os
 from pipelineprobe.config import load_config
 from pipelineprobe.connectors.airflow import AirflowConnector
 from pipelineprobe.connectors.dbt import DbtConnector
 from pipelineprobe.connectors.postgres import PostgresConnector
+from pipelineprobe.connectors.bigquery import BigQueryConnector
+from pipelineprobe.connectors.snowflake import SnowflakeConnector
 from pipelineprobe.rules import get_configured_engine
 from pipelineprobe.renderer import ReportRenderer
 
@@ -33,7 +36,16 @@ def audit(
     typer.echo("Initializing connectors...")
     airflow_conn = AirflowConnector(cfg.orchestrator)
     dbt_conn = DbtConnector(cfg.dbt)
-    pg_conn = PostgresConnector(cfg.warehouse)
+    
+    if cfg.warehouse.type == "bigquery":
+        typer.echo("Using BigQuery connector...")
+        warehouse_conn = BigQueryConnector(cfg.warehouse)
+    elif cfg.warehouse.type == "snowflake":
+        typer.echo("Using Snowflake connector...")
+        warehouse_conn = SnowflakeConnector(cfg.warehouse)
+    else:
+        typer.echo("Using Postgres connector...")
+        warehouse_conn = PostgresConnector(cfg.warehouse)
 
     typer.echo("Fetching data from source systems...")
     # Fetch top-level DAGs
@@ -48,13 +60,13 @@ def audit(
             airflow_tasks.extend(airflow_conn.get_tasks(dag.id))
         
     dbt_models = dbt_conn.get_models()
-    postgres_tables = pg_conn.get_stats_sync()
+    warehouse_tables = warehouse_conn.get_stats_sync()
 
     context = {
         "airflow_dags": airflow_dags,
         "airflow_tasks": airflow_tasks,
         "dbt_models": dbt_models,
-        "postgres_tables": postgres_tables,
+        "postgres_tables": warehouse_tables, # Backwards compatible context key
     }
 
     typer.echo("Running rule engine...")
@@ -90,7 +102,7 @@ def audit(
 
     typer.secho("Audit completed successfully!", fg=typer.colors.GREEN)
 
-import os
+
 
 @app.command()
 def init():
