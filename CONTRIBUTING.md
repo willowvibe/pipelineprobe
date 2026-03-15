@@ -24,8 +24,7 @@ source .venv/bin/activate      # Linux / macOS
 # .venv\Scripts\activate       # Windows
 
 # Install in editable mode with all dev dependencies
-pip install -e .
-pip install pytest ruff
+pip install -e ".[dev]"
 ```
 
 ---
