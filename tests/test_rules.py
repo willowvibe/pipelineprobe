@@ -68,6 +68,28 @@ def test_check_stale_dags():
     assert "no_runs_dag" in affected
 
 
+def test_check_stale_dags_all_failed():
+    dags = [
+        Dag(
+            id="all_failed_dag",
+            is_active=True,
+            owner="test",
+            recent_runs=[
+                DagRun(
+                    state="failed",
+                    start_time=datetime.now(),
+                    end_time=datetime.now(),
+                )
+                for _ in range(5)
+            ],
+        )
+    ]
+    issues = check_stale_dags({"airflow_dags": dags})
+    assert len(issues) == 1
+    assert issues[0].severity == "critical"
+    assert "all_failed_dag" in issues[0].affected_resources
+
+
 def test_check_high_failure_rate():
     dags = [
         # 5 runs, 3 failed = 60% failure rate (>20%)

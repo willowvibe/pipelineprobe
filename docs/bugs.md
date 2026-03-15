@@ -1,148 +1,124 @@
-All 5 previous bugs are confirmed fixed. Here's the full state assessment:
+Excellent progress — every single bug and issue from the last round is now confirmed fixed. Here is the honest current state:
 
 ***
 
-## ✅ All Previous Bugs — Confirmed Fixed
+## ✅ All Previous Issues — Confirmed Fixed
 
-| Bug | Fix Status |
-|-----|-----------|
-| `asyncio.run()` crash → replaced with `psycopg2` sync | ✅ Fixed |
-| `init` YAML key `url` → `base_url` | ✅ Fixed |
-| `postgres_tables` hardcoded key → `warehouse_tables` + `warehouse_type` | ✅ Fixed |
-| dbt manifest double-join path | ✅ Fixed — now `Path(self.config.manifest_path)` directly |
-| `timedelta.days` truncation → `total_seconds() / 86400` | ✅ Fixed |
-| `fail_on_critical` default mismatch → now `5` in both config and init YAML | ✅ Fixed |
-| `report.html` template exists and renders | ✅ Confirmed |
+| Item | Status |
+|------|--------|
+| `days_since` float in message → `:.1f` | ✅ Fixed |
+| All-failed DAG silent miss → now `critical` issue | ✅ Fixed |
+| `[dev]` extras in `pyproject.toml` | ✅ Fixed |
+| Hardcoded `"admin"` password → `None` + explicit warning | ✅ Fixed |
+| `report.html` upgraded with Tailwind-style CSS + score card + footer | ✅ Fixed |
+| `Dockerfile` added | ✅ Fixed |
+| CI now runs `pytest` + `ruff` | ✅ Fixed |
 
 ***
 
-## 🔴 Remaining Bugs Found in This Pass
+## 🔴 One Real Bug Remaining
 
-### Bug 1 — `stale_dags` leaks a float into the issue message
-**File:** `pipelineprobe/rules/airflow_rules.py` line 92
+### Bug — `report.html` uses `now()` which doesn't exist in Jinja2
+**File:** `pipelineprobe/templates/report.html` line with the timestamp
 
-```python
-details=f"No successful execution in the last {days_since} days.",
+```html
+<span>Report generated on {{ now().strftime('%Y-%m-%d %H:%M') }}</span>
 ```
 
-`days_since` is now a `float` (e.g., `7.834567...`). The message reads:
-> *"No successful execution in the last 7.834567291666667 days."*
+Jinja2 does **not** have a built-in `now()` function. This will throw `UndefinedError: 'now' is undefined` on every HTML report render, crashing the audit at the very last step. It only works if you explicitly inject `now` into the Jinja2 environment or pass it as a template variable.
 
-That's ugly in a user-facing report. Fix:
+**Fix — Option A (simplest): pass `generated_at` from `renderer.py`**
+
+In `pipelineprobe/renderer.py`, change `render_html`:
 ```python
-details=f"No successful execution in the last {days_since:.1f} days.",
-```
+from datetime import datetime
 
-***
-
-### Bug 2 — `check_stale_dags` misses DAGs with only failed recent runs
-**File:** `pipelineprobe/rules/airflow_rules.py` lines 78–95
-
-The stale check only fires when `recent_successes` exists and the latest success is old. But if a DAG has run 20 times and **every single run failed**, `recent_successes` is an empty list — the `if recent_successes:` block is never entered, and the DAG silently passes the stale check even though it hasn't succeeded in months. This is the most dangerous silent miss in the whole rule set.
-
-**Fix:**
-```python
-if not recent_successes:
-    # Has runs but zero successes — always flag as critical, not just warning
-    issues.append(
-        Issue(
-            severity="critical",
-            category="dag",
-            summary=f"DAG {dag.id} has no successful runs in its recent history.",
-            details=f"Last {len(dag.recent_runs)} runs all ended in non-success states.",
-            recommendation="Investigate failures immediately — this DAG has never succeeded recently.",
-            affected_resources=[dag.id],
-        )
+def render_html(self, issues: list[Issue], summary: dict) -> Path:
+    template = self.env.get_template("report.html")
+    html_content = template.render(
+        issues=issues,
+        summary=summary,
+        generated_at=datetime.now().strftime("%Y-%m-%d %H:%M"),
     )
-else:
-    # Has some successes — check if latest one is stale
-    latest_success = sorted(recent_successes, key=lambda r: r.end_time, reverse=True)[0]
     ...
 ```
 
+Then in `report.html` update the line to:
+```html
+<span class="issue-category">Report generated on {{ generated_at }}</span>
+```
+
+**Fix — Option B: add `now` as a Jinja2 global in `renderer.py`**
+```python
+from datetime import datetime
+self.env.globals["now"] = datetime.now
+```
+This makes `now()` available in all templates. Option A is cleaner for an audit tool since the timestamp is fixed at render time.
+
 ***
 
-### Bug 3 — `pyproject.toml` missing `pytest` and `pytest-mock` in dev dependencies
+## 🟡 Three Things Worth Doing Before First Public Share
+
+### 1. `test_rules.py` has no test for the all-failed-DAG critical path
+**File:** `tests/test_rules.py`
+
+`test_check_stale_dags` tests: stale success, fresh success, no runs — but **not** the new `if not recent_successes` branch that flags all-failed DAGs as critical. The commit that added this check has no corresponding test. If someone refactors that block later they won't get a regression catch.
+
+Add this test case to `test_rules.py`:
+```python
+def test_check_stale_dags_all_failed():
+    dags = [
+        Dag(
+            id="all_failed_dag",
+            is_active=True,
+            owner="test",
+            recent_runs=[
+                DagRun(state="failed", start_time=datetime.now(), end_time=datetime.now())
+                for _ in range(5)
+            ],
+        )
+    ]
+    issues = check_stale_dags({"airflow_dags": dags})
+    assert len(issues) == 1
+    assert issues[0].severity == "critical"
+    assert "all_failed_dag" in issues[0].affected_resources
+```
+
+***
+
+### 2. `Dockerfile` will fail at build time — `pyproject.toml` copy without `README.md`
+**File:** `Dockerfile`
+
+```dockerfile
+COPY pyproject.toml .
+RUN pip install --no-cache-dir .
+```
+
+`pyproject.toml` declares `readme = "README.md"`. When pip builds the package, hatchling reads `pyproject.toml`, finds `readme = "README.md"`, tries to open it, and fails with `FileNotFoundError` because `README.md` was never copied into the image. The `RUN pip install` step will **crash the Docker build**.
+
+**Fix:**
+```dockerfile
+COPY pyproject.toml README.md ./
+RUN pip install --no-cache-dir .
+COPY pipelineprobe/ ./pipelineprobe/
+```
+
+***
+
+### 3. `pyproject.toml` missing `ruff` in dev dependencies — CI will fail on a fresh clone
 **File:** `pyproject.toml`
 
-There are 6 test files but no `[project.optional-dependencies]` or `[tool.hatch.envs]` dev section. A contributor who clones and runs `pip install -e .` then `pytest` will get `ModuleNotFoundError: No module named 'pytest'`. This is a contributor experience blocker.
+CI runs `ruff check .` but `ruff` is not listed in `[project.optional-dependencies] dev`. A contributor who does `pip install -e ".[dev]"` then runs `ruff check .` locally gets `command not found: ruff`. More critically, a fresh CI runner installing only `.[dev]` will fail at the lint step with the same error.
 
-**Add to `pyproject.toml`:**
+**Fix:**
 ```toml
 [project.optional-dependencies]
 dev = [
     "pytest>=7.4",
     "pytest-mock>=3.12",
     "typer[all]>=0.9",
+    "ruff>=0.4",          # ← add this
 ]
-```
-Then document in `CONTRIBUTING.md`:
-```bash
-pip install -e ".[dev]"
-```
-
-***
-
-### Bug 4 — `AirflowConfig` still has a `password` hardcoded default of `"admin"`
-**File:** `pipelineprobe/config.py` line 9
-
-```python
-password: str = "admin"
-```
-
-If a user runs `pipelineprobe audit` without setting the env var and without editing the YAML, it silently attempts auth with `admin/admin`. Worse, if they're running against a real production Airflow with disabled auth, it will actually connect — and if auth is enabled with different credentials, the error message gives no hint about env vars.
-
-**Fix — remove the default, make it `None` and validate:**
-```python
-password: str | None = None
-```
-Then in `AirflowConnector.__init__`, warn explicitly if password is `None`:
-```python
-if not self.config.password:
-    logger.warning(
-        "No Airflow password set. Set PIPELINEPROBE_AIRFLOW_PASSWORD "
-        "or add 'password' under orchestrator in pipelineprobe.yml"
-    )
-```
-
-***
-
-## 🟡 Issues — Not Bugs, but Will Hurt Before PyPI Publish
-
-### Issue 1 — `report.html` template is functional but bare — won't impress anyone
-At 1.4KB, the current template is a plain HTML table with inline CSS. This is the **primary deliverable** of the entire tool — the thing you show a client or post on LinkedIn. A bare table will make the project look unpolished compared to even a modest Tailwind-styled layout.
-
-**Recommended minimum upgrade for the template:**
-- Add a score ring / traffic-light badge (CSS-only, no JS needed)
-- Group issues by severity with collapsible sections
-- Add a footer: `Generated by PipelineProbe · Built by WillowVibe`
-- Add a timestamp and environment target (Airflow URL, dbt target) in the header
-
-This is entirely a CSS/Jinja2 change — no Python changes needed. It's the highest ROI improvement left in the project.
-
-***
-
-### Issue 2 — No `Dockerfile` or `docker-compose.yml` for local demo
-The README likely mentions Docker but there's no `Dockerfile` in the repo root. Every data engineer's first instinct is `docker run willowvibe/pipelineprobe audit`. Without a Docker image, you lose the "zero install friction" angle that makes OSS tools go viral.
-
-**Minimal `Dockerfile`:**
-```dockerfile
-FROM python:3.11-slim
-WORKDIR /app
-COPY pyproject.toml .
-COPY pipelineprobe/ ./pipelineprobe/
-RUN pip install -e .
-ENTRYPOINT ["pipelineprobe"]
-CMD ["--help"]
-```
-
-***
-
-### Issue 3 — CI workflow likely doesn't run tests (needs verification)
-The only workflow file is `ci.yml` (624 bytes — very small). A minimal CI that only lints but doesn't actually run `pytest` means the "93% test coverage" claim in the commit message is unverified on every PR. Make sure `ci.yml` includes:
-```yaml
-- name: Run tests
-  run: pip install -e ".[dev]" && pytest tests/ -v
 ```
 
 ***
@@ -150,16 +126,15 @@ The only workflow file is `ci.yml` (624 bytes — very small). A minimal CI that
 ## Priority Order
 
 ```
-Fix immediately (before any share):
-  1. Bug 1  — Round days_since float in stale DAG message
-  2. Bug 2  — Handle all-failed DAGs in stale check (critical miss)
-  3. Bug 3  — Add [dev] extras to pyproject.toml
-  4. Bug 4  — Remove hardcoded "admin" password default
+Fix immediately (runtime crash):
+  1. Bug   — Fix now() in report.html → pass generated_at from renderer.py
 
-Before PyPI / public announcement:
-  5. Issue 1 — Upgrade report.html template (it IS your product demo)
-  6. Issue 2 — Add Dockerfile
-  7. Issue 3 — Verify CI actually runs pytest
+Fix before sharing Docker image:
+  2. Issue 2 — COPY README.md in Dockerfile (build crash)
+
+Fix before asking for contributors:
+  3. Issue 3 — Add ruff to dev deps in pyproject.toml
+  4. Issue 1 — Add test for all-failed-DAG critical branch
 ```
 
-The codebase is in genuinely good shape — these are refinements, not structural problems. Fix bugs 1–4 (all small, under 30 minutes total), then focus effort on the report template. That template is your best marketing asset.
+The repo is genuinely close to a clean v0.1.0 state. Fix these four items (all are small, under 20 minutes total) and you have a publishable, presentable OSS project.

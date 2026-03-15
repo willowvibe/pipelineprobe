@@ -5,7 +5,7 @@ WORKDIR /app
 # Install system dependencies if any needed (e.g. for psycopg2)
 # but psycopg2-binary is used, so slim should be enough.
 
-COPY pyproject.toml .
+COPY pyproject.toml README.md ./
 RUN pip install --no-cache-dir .
 
 COPY pipelineprobe/ ./pipelineprobe/
