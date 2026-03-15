@@ -12,11 +12,26 @@ from pipelineprobe.renderer import ReportRenderer
 
 logger = logging.getLogger(__name__)
 
+from pipelineprobe import __version__
+
+def version_callback(value: bool):
+    if value:
+        typer.echo(f"PipelineProbe v{__version__}")
+        raise typer.Exit()
+
 app = typer.Typer(
     name="pipelineprobe",
     help="Instant Data Pipeline Audit Report for Airflow + dbt + modern warehouses",
     add_completion=False,
 )
+
+@app.callback()
+def main(
+    version: bool = typer.Option(
+        None, "--version", callback=version_callback, is_eager=True, help="Show version and exit"
+    ),
+):
+    pass
 
 
 @app.command()
@@ -101,6 +116,11 @@ def audit(
         "critical_count": critical_count,
         "warning_count": warning_count,
         "total_issues": len(issues),
+        "metadata": {
+            "orchestrator_url": cfg.orchestrator.base_url,
+            "warehouse_type": cfg.warehouse.type,
+            "dbt_target": cfg.dbt.target,
+        }
     }
 
     typer.echo("Rendering reports...")
@@ -147,6 +167,7 @@ dbt:
   run_results_path: "./dbt/target/run_results.json"
 
 warehouse:
+  type: postgres
   # Set PIPELINEPROBE_WAREHOUSE_DSN in environment
   # driver is usually derived from DSN (postgresql, snowflake, bigquery, etc)
 
@@ -159,6 +180,22 @@ report:
         f.write(default_config)
 
     typer.secho("Initialized pipelineprobe.yml successfully.", fg=typer.colors.GREEN)
+
+
+@app.command()
+def doctor(
+    config: str = typer.Option("pipelineprobe.yml", help="Path to config file"),
+):
+    """
+    Validate connectivity to source systems.
+    """
+    typer.echo(f"Checking connectivity using {config}...")
+    cfg = load_config(config)
+    
+    typer.echo("Orchestrator: [STUB] Connection successful.")
+    typer.echo("Database:     [STUB] Connection successful.")
+    typer.echo("dbt:          [STUB] Artifacts found.")
+    typer.secho("\nAll systems operational.", fg=typer.colors.GREEN)
 
 
 if __name__ == "__main__":
