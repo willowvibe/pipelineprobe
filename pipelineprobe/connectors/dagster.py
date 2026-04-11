@@ -139,14 +139,14 @@ class DagsterConnector:
                 resp.raise_for_status()
                 body = resp.json()
 
-                runs_or_error = (
-                    body.get("data", {}).get("runsOrError", {})
-                )
+                runs_or_error = body.get("data", {}).get("runsOrError", {})
                 typename = runs_or_error.get("__typename", "")
 
                 if typename != "Runs":
                     msg = runs_or_error.get("message", "unknown error")
-                    logger.error("DagsterConnector: runsOrError returned %s: %s", typename, msg)
+                    logger.error(
+                        "DagsterConnector: runsOrError returned %s: %s", typename, msg
+                    )
                     break
 
                 page: List[Dict[str, Any]] = runs_or_error.get("results", [])

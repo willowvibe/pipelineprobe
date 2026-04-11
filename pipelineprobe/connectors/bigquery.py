@@ -108,7 +108,7 @@ class BigQueryConnector:
                     {
                         "table_id": r.table_id,
                         "total_bytes_billed": billed,
-                        "total_gb_billed": round(billed / (1024 ** 3), 2),
+                        "total_gb_billed": round(billed / (1024**3), 2),
                         "query_count": int(r.query_count or 0),
                     }
                 )

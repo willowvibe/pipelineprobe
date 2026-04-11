@@ -126,7 +126,9 @@ class PrefectConnector:
         state_name: str = (raw.get("state") or {}).get("type", "UNKNOWN")
         state = _STATE_MAP.get(state_name.upper(), "unknown")
 
-        start_time = _parse_prefect_dt(raw.get("start_time") or raw.get("expected_start_time"))
+        start_time = _parse_prefect_dt(
+            raw.get("start_time") or raw.get("expected_start_time")
+        )
         end_time = _parse_prefect_dt(raw.get("end_time"))
 
         return DagRun(state=state, start_time=start_time, end_time=end_time)

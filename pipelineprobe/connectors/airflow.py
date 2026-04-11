@@ -136,9 +136,7 @@ class AirflowConnector:
             start_str = r.get("start_date")
             end_str = r.get("end_date")
             start_time = (
-                parse_date(start_str)
-                if start_str
-                else parse_date(r["execution_date"])
+                parse_date(start_str) if start_str else parse_date(r["execution_date"])
             )
             end_time = parse_date(end_str) if end_str else None
             runs.append(DagRun(state=state, start_time=start_time, end_time=end_time))
