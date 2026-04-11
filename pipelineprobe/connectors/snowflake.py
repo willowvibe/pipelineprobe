@@ -79,3 +79,65 @@ class SnowflakeConnector:
         except Exception as e:
             logger.error("Error connecting to Snowflake: %s", e)
             return []
+
+    def get_cost_insights_sync(self) -> List[Dict[str, Any]]:
+        """Return credit consumption per warehouse over the past 30 days.
+
+        Queries ``SNOWFLAKE.ACCOUNT_USAGE.WAREHOUSE_METERING_HISTORY``, which is
+        available in all Snowflake accounts with ACCOUNTADMIN (or equivalent).
+
+        Returns a list of dicts with keys:
+            warehouse_name  str   — Snowflake virtual warehouse name
+            total_credits   float — credits consumed in the last 30 days
+            cloud_services  float — cloud-services credits (subset of total)
+        """
+        missing = [
+            field
+            for field, val in [
+                ("account", self.config.account),
+                ("username", self.config.username),
+                ("password", self.config.password),
+            ]
+            if not val
+        ]
+        if missing:
+            logger.error(
+                "Snowflake cost insights: missing required config fields: %s",
+                ", ".join(missing),
+            )
+            return []
+
+        try:
+            conn = snowflake.connector.connect(
+                user=self.config.username,
+                password=self.config.password,
+                account=self.config.account,
+            )
+            cursor = conn.cursor()
+            query = """
+                SELECT
+                    WAREHOUSE_NAME,
+                    SUM(CREDITS_USED)               AS total_credits,
+                    SUM(CREDITS_USED_CLOUD_SERVICES) AS cloud_services
+                FROM SNOWFLAKE.ACCOUNT_USAGE.WAREHOUSE_METERING_HISTORY
+                WHERE START_TIME >= DATEADD(DAY, -30, CURRENT_TIMESTAMP())
+                GROUP BY WAREHOUSE_NAME
+                ORDER BY total_credits DESC
+                LIMIT 25
+            """
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            result = [
+                {
+                    "warehouse_name": r[0],
+                    "total_credits": float(r[1] or 0),
+                    "cloud_services": float(r[2] or 0),
+                }
+                for r in rows
+            ]
+            cursor.close()
+            conn.close()
+            return result
+        except Exception as e:
+            logger.error("Error fetching Snowflake cost insights: %s", e)
+            return []
