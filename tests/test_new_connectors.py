@@ -1,7 +1,6 @@
 """Tests for Prefect and Dagster connectors (v0.2.0) and cost-insight
 connector methods on BigQuery and Snowflake (v0.3.0)."""
 
-import json
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -29,8 +28,7 @@ class TestPrefectConnector:
         config = self._config()
         connector = PrefectConnector(config)
 
-        mock_client = mock_client_cls.return_value.__enter__.return_value
-        # We use the real client object (not context manager) in the connector
+        # The connector does not use a context manager — grab the instance directly
         mock_client_instance = mock_client_cls.return_value
 
         # Stub flows response
