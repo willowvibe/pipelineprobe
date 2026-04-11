@@ -38,7 +38,11 @@ app = typer.Typer(
 @app.callback()
 def main(
     version: bool = typer.Option(
-        None, "--version", callback=version_callback, is_eager=True, help="Show version and exit"
+        None,
+        "--version",
+        callback=version_callback,
+        is_eager=True,
+        help="Show version and exit",
     ),
 ):
     pass
@@ -146,12 +150,18 @@ def audit(
 
     if cfg.report.include_cost_section:
         typer.echo("Fetching cost insights...")
-        if cfg.warehouse.type == "bigquery" and isinstance(warehouse_conn, BigQueryConnector):
+        if cfg.warehouse.type == "bigquery" and isinstance(
+            warehouse_conn, BigQueryConnector
+        ):
             bq_cost_insights = warehouse_conn.get_cost_insights_sync()
             typer.echo(f"  BigQuery: {len(bq_cost_insights)} tables with cost data.")
-        elif cfg.warehouse.type == "snowflake" and isinstance(warehouse_conn, SnowflakeConnector):
+        elif cfg.warehouse.type == "snowflake" and isinstance(
+            warehouse_conn, SnowflakeConnector
+        ):
             sf_cost_insights = warehouse_conn.get_cost_insights_sync()
-            typer.echo(f"  Snowflake: {len(sf_cost_insights)} warehouses with credit data.")
+            typer.echo(
+                f"  Snowflake: {len(sf_cost_insights)} warehouses with credit data."
+            )
 
     context = {
         # The existing Airflow rules operate on "airflow_dags" / "airflow_tasks".
@@ -437,10 +447,12 @@ def doctor(
 
             conn = psycopg2.connect(cfg.warehouse.dsn, connect_timeout=10)
             conn.close()
-            dsn_safe = cfg.warehouse.dsn.split("@")[-1] if "@" in cfg.warehouse.dsn else cfg.warehouse.dsn
-            typer.secho(
-                f"  Postgres:  OK  (@{dsn_safe})", fg=typer.colors.GREEN
+            dsn_safe = (
+                cfg.warehouse.dsn.split("@")[-1]
+                if "@" in cfg.warehouse.dsn
+                else cfg.warehouse.dsn
             )
+            typer.secho(f"  Postgres:  OK  (@{dsn_safe})", fg=typer.colors.GREEN)
 
         elif cfg.warehouse.type == "bigquery":
             from google.cloud import bigquery
@@ -474,9 +486,7 @@ def doctor(
             )
 
     except Exception as exc:
-        typer.secho(
-            f"  {cfg.warehouse.type}: FAIL  ({exc})", fg=typer.colors.RED
-        )
+        typer.secho(f"  {cfg.warehouse.type}: FAIL  ({exc})", fg=typer.colors.RED)
         all_ok = False
 
     # ------------------------------------------------------------------
@@ -625,7 +635,8 @@ def diff(
         )
         for issue in improvements.values():
             typer.secho(
-                f"  [{issue['severity'].upper()}] {issue['summary']}", fg=typer.colors.GREEN
+                f"  [{issue['severity'].upper()}] {issue['summary']}",
+                fg=typer.colors.GREEN,
             )
 
     if not regressions and not improvements:

@@ -58,9 +58,9 @@ class TestPrefectConnector:
         ]
 
         mock_client_instance.post.side_effect = [
-            flows_resp,   # /api/flows/filter
-            runs_resp,    # /api/flow_runs/filter for flow-uuid-1
-            runs_resp,    # /api/flow_runs/filter for flow-uuid-2
+            flows_resp,  # /api/flows/filter
+            runs_resp,  # /api/flow_runs/filter for flow-uuid-1
+            runs_resp,  # /api/flow_runs/filter for flow-uuid-2
         ]
 
         dags = connector.get_dags()

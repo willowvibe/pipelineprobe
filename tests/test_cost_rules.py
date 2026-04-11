@@ -16,7 +16,12 @@ class TestExpensiveBqTables:
         context = {
             "warehouse_type": "postgres",
             "bq_cost_insights": [
-                {"table_id": "p.d.t", "total_bytes_billed": 999_999_999_999, "total_gb_billed": 930.0, "query_count": 5}
+                {
+                    "table_id": "p.d.t",
+                    "total_bytes_billed": 999_999_999_999,
+                    "total_gb_billed": 930.0,
+                    "query_count": 5,
+                }
             ],
         }
         assert check_expensive_bq_tables(context) == []
@@ -29,7 +34,12 @@ class TestExpensiveBqTables:
         context = {
             "warehouse_type": "bigquery",
             "bq_cost_insights": [
-                {"table_id": "p.d.small", "total_bytes_billed": 1_073_741_824, "total_gb_billed": 1.0, "query_count": 10}
+                {
+                    "table_id": "p.d.small",
+                    "total_bytes_billed": 1_073_741_824,
+                    "total_gb_billed": 1.0,
+                    "query_count": 10,
+                }
             ],
         }
         issues = check_expensive_bq_tables(context)
@@ -40,7 +50,12 @@ class TestExpensiveBqTables:
             "warehouse_type": "bigquery",
             "bq_cost_insights": [
                 # 600 GiB → warn (>= 500 GiB, < 5000 GiB)
-                {"table_id": "p.d.medium_table", "total_bytes_billed": 644_245_094_400, "total_gb_billed": 600.0, "query_count": 50}
+                {
+                    "table_id": "p.d.medium_table",
+                    "total_bytes_billed": 644_245_094_400,
+                    "total_gb_billed": 600.0,
+                    "query_count": 50,
+                }
             ],
         }
         issues = check_expensive_bq_tables(context)
@@ -53,7 +68,12 @@ class TestExpensiveBqTables:
             "warehouse_type": "bigquery",
             "bq_cost_insights": [
                 # 6000 GiB → critical (>= 5000 GiB)
-                {"table_id": "p.d.huge_table", "total_bytes_billed": 6_442_450_944_000, "total_gb_billed": 6000.0, "query_count": 500}
+                {
+                    "table_id": "p.d.huge_table",
+                    "total_bytes_billed": 6_442_450_944_000,
+                    "total_gb_billed": 6000.0,
+                    "query_count": 500,
+                }
             ],
         }
         issues = check_expensive_bq_tables(context)
@@ -65,9 +85,24 @@ class TestExpensiveBqTables:
         context = {
             "warehouse_type": "bigquery",
             "bq_cost_insights": [
-                {"table_id": "p.d.a", "total_bytes_billed": 5_000 * 1024**3, "total_gb_billed": 5000.0, "query_count": 100},
-                {"table_id": "p.d.b", "total_bytes_billed": 600 * 1024**3, "total_gb_billed": 600.0, "query_count": 20},
-                {"table_id": "p.d.c", "total_bytes_billed": 10 * 1024**3, "total_gb_billed": 10.0, "query_count": 5},
+                {
+                    "table_id": "p.d.a",
+                    "total_bytes_billed": 5_000 * 1024**3,
+                    "total_gb_billed": 5000.0,
+                    "query_count": 100,
+                },
+                {
+                    "table_id": "p.d.b",
+                    "total_bytes_billed": 600 * 1024**3,
+                    "total_gb_billed": 600.0,
+                    "query_count": 20,
+                },
+                {
+                    "table_id": "p.d.c",
+                    "total_bytes_billed": 10 * 1024**3,
+                    "total_gb_billed": 10.0,
+                    "query_count": 5,
+                },
             ],
         }
         issues = check_expensive_bq_tables(context)
@@ -87,7 +122,11 @@ class TestSnowflakeCreditSpenders:
         context = {
             "warehouse_type": "bigquery",
             "sf_cost_insights": [
-                {"warehouse_name": "WH", "total_credits": 9999.0, "cloud_services": 100.0}
+                {
+                    "warehouse_name": "WH",
+                    "total_credits": 9999.0,
+                    "cloud_services": 100.0,
+                }
             ],
         }
         assert check_snowflake_credit_spenders(context) == []
@@ -100,7 +139,11 @@ class TestSnowflakeCreditSpenders:
         context = {
             "warehouse_type": "snowflake",
             "sf_cost_insights": [
-                {"warehouse_name": "SMALL_WH", "total_credits": 100.0, "cloud_services": 5.0}
+                {
+                    "warehouse_name": "SMALL_WH",
+                    "total_credits": 100.0,
+                    "cloud_services": 5.0,
+                }
             ],
         }
         assert check_snowflake_credit_spenders(context) == []
@@ -110,7 +153,11 @@ class TestSnowflakeCreditSpenders:
             "warehouse_type": "snowflake",
             "sf_cost_insights": [
                 # 750 credits → warn (>= 500, < 5000)
-                {"warehouse_name": "MEDIUM_WH", "total_credits": 750.0, "cloud_services": 30.0}
+                {
+                    "warehouse_name": "MEDIUM_WH",
+                    "total_credits": 750.0,
+                    "cloud_services": 30.0,
+                }
             ],
         }
         issues = check_snowflake_credit_spenders(context)
@@ -123,7 +170,11 @@ class TestSnowflakeCreditSpenders:
             "warehouse_type": "snowflake",
             "sf_cost_insights": [
                 # 6000 credits → critical (>= 5000)
-                {"warehouse_name": "BIG_WH", "total_credits": 6000.0, "cloud_services": 200.0}
+                {
+                    "warehouse_name": "BIG_WH",
+                    "total_credits": 6000.0,
+                    "cloud_services": 200.0,
+                }
             ],
         }
         issues = check_snowflake_credit_spenders(context)
@@ -135,9 +186,21 @@ class TestSnowflakeCreditSpenders:
         context = {
             "warehouse_type": "snowflake",
             "sf_cost_insights": [
-                {"warehouse_name": "GIANT_WH", "total_credits": 8000.0, "cloud_services": 300.0},
-                {"warehouse_name": "MED_WH", "total_credits": 600.0, "cloud_services": 20.0},
-                {"warehouse_name": "TINY_WH", "total_credits": 50.0, "cloud_services": 2.0},
+                {
+                    "warehouse_name": "GIANT_WH",
+                    "total_credits": 8000.0,
+                    "cloud_services": 300.0,
+                },
+                {
+                    "warehouse_name": "MED_WH",
+                    "total_credits": 600.0,
+                    "cloud_services": 20.0,
+                },
+                {
+                    "warehouse_name": "TINY_WH",
+                    "total_credits": 50.0,
+                    "cloud_services": 2.0,
+                },
             ],
         }
         issues = check_snowflake_credit_spenders(context)

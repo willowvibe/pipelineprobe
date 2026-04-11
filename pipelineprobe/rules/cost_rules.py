@@ -15,8 +15,8 @@ from pipelineprobe.models import Issue
 
 # Thresholds — intentionally conservative defaults so that the rules are
 # actionable for small and large organisations alike.
-_BQ_WARN_GB = 500       # warn when a table accounts for >= 500 GiB billed / 30 days
-_BQ_CRIT_GB = 5_000     # critical when >= 5 TiB billed
+_BQ_WARN_GB = 500  # warn when a table accounts for >= 500 GiB billed / 30 days
+_BQ_CRIT_GB = 5_000  # critical when >= 5 TiB billed
 _SF_WARN_CREDITS = 500  # warn when a warehouse consumes >= 500 credits / 30 days
 _SF_CRIT_CREDITS = 5_000  # critical when >= 5 000 credits
 
