@@ -27,12 +27,18 @@ class ReportRenderer:
 
         template = self.env.get_template("report.html")
         generated_at = datetime.now().strftime("%Y-%m-%d %H:%M")
-        
-        # Identify top 3 critical/warning actions
+
+        # Identify top 3 critical/warning actions sorted by severity then category
         top_actions = sorted(
             [i for i in issues if i.severity in ("critical", "warning")],
             key=lambda x: (x.severity == "warning", x.category),
         )[:3]
+
+        # SVG ring offset: circumference = 2π × r(40) ≈ 251.3
+        # offset = circumference × (1 − score/100) → 0 means full ring, 251.3 means empty
+        _circ = 251.3
+        score = summary.get("score", 0)
+        ring_offset = round(_circ * (1 - score / 100), 2)
 
         html_content = template.render(
             issues=issues,
@@ -41,6 +47,7 @@ class ReportRenderer:
             version=__version__,
             top_actions=top_actions,
             metadata=summary.get("metadata", {}),
+            ring_offset=ring_offset,
         )
         output_path = self.output_dir / "pipelineprobe-report.html"
         with open(output_path, "w") as f:

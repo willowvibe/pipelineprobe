@@ -139,6 +139,7 @@ def audit(
     dag_count = max(1, len(airflow_dags))
     critical_count = sum(1 for i in issues if i.severity == "critical")
     warning_count = sum(1 for i in issues if i.severity == "warning")
+    info_count = sum(1 for i in issues if i.severity == "info")
 
     critical_density = critical_count / dag_count
     warning_density = warning_count / dag_count
@@ -151,6 +152,7 @@ def audit(
         "score": score,
         "critical_count": critical_count,
         "warning_count": warning_count,
+        "info_count": info_count,
         "total_issues": len(issues),
         "dag_count": dag_count,
         "score_formula": (
