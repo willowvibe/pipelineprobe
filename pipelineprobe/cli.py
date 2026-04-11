@@ -8,8 +8,10 @@ import httpx
 import typer
 
 from pipelineprobe import __version__
-from pipelineprobe.config import load_config
+from pipelineprobe.config import load_config, SUPPORTED_ORCHESTRATORS
 from pipelineprobe.connectors.airflow import AirflowConnector
+from pipelineprobe.connectors.prefect import PrefectConnector
+from pipelineprobe.connectors.dagster import DagsterConnector
 from pipelineprobe.connectors.dbt import DbtConnector
 from pipelineprobe.connectors.postgres import PostgresConnector
 from pipelineprobe.connectors.bigquery import BigQueryConnector
@@ -72,12 +74,59 @@ def audit(
         cfg.report.format = report_format
 
     typer.echo("Initializing connectors...")
-    airflow_conn = AirflowConnector(cfg.orchestrator)
+
+    # ------------------------------------------------------------------
+    # Orchestrator connector — Airflow (default), Prefect, or Dagster
+    # ------------------------------------------------------------------
+    orch_type = cfg.orchestrator.type.lower()
+    if orch_type not in SUPPORTED_ORCHESTRATORS:
+        typer.secho(
+            f"Unknown orchestrator type '{orch_type}'. "
+            f"Supported: {', '.join(sorted(SUPPORTED_ORCHESTRATORS))}",
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(code=1)
+
+    orchestrator_dags: list = []
+    orchestrator_tasks: list = []
+
+    if orch_type == "prefect":
+        typer.echo(f"Using Prefect connector ({cfg.orchestrator.base_url})...")
+        prefect_conn = PrefectConnector(cfg.orchestrator)
+        orchestrator_dags = prefect_conn.get_dags()
+        typer.echo(f"  Found {len(orchestrator_dags)} Prefect flows.")
+
+    elif orch_type == "dagster":
+        typer.echo(f"Using Dagster connector ({cfg.orchestrator.base_url})...")
+        dagster_conn = DagsterConnector(cfg.orchestrator)
+        orchestrator_dags = dagster_conn.get_dags()
+        typer.echo(f"  Found {len(orchestrator_dags)} Dagster jobs.")
+
+    else:  # airflow (default)
+        airflow_conn = AirflowConnector(cfg.orchestrator)
+        orchestrator_dags = airflow_conn.get_dags()
+        if orchestrator_dags:
+            typer.echo(
+                f"Found {len(orchestrator_dags)} Airflow DAGs. "
+                f"Fetching runs and tasks concurrently "
+                f"(concurrency={cfg.rules.fetch_concurrency})..."
+            )
+            orchestrator_dags, orchestrator_tasks = asyncio.run(
+                airflow_conn.fetch_dag_details(
+                    orchestrator_dags, concurrency=cfg.rules.fetch_concurrency
+                )
+            )
+
+    # ------------------------------------------------------------------
+    # Warehouse connector
+    # ------------------------------------------------------------------
     dbt_conn = DbtConnector(cfg.dbt)
 
     if cfg.warehouse.type == "bigquery":
         typer.echo("Using BigQuery connector...")
-        warehouse_conn = BigQueryConnector(cfg.warehouse)
+        warehouse_conn: BigQueryConnector | SnowflakeConnector | PostgresConnector = (
+            BigQueryConnector(cfg.warehouse)
+        )
     elif cfg.warehouse.type == "snowflake":
         typer.echo("Using Snowflake connector...")
         warehouse_conn = SnowflakeConnector(cfg.warehouse)
@@ -86,29 +135,37 @@ def audit(
         warehouse_conn = PostgresConnector(cfg.warehouse)
 
     typer.echo("Fetching data from source systems...")
-    airflow_dags = airflow_conn.get_dags()
-    airflow_tasks: list = []
-
-    if airflow_dags:
-        typer.echo(
-            f"Found {len(airflow_dags)} Airflow DAGs. "
-            f"Fetching runs and tasks concurrently (concurrency={cfg.rules.fetch_concurrency})..."
-        )
-        airflow_dags, airflow_tasks = asyncio.run(
-            airflow_conn.fetch_dag_details(
-                airflow_dags, concurrency=cfg.rules.fetch_concurrency
-            )
-        )
-
     dbt_models = dbt_conn.get_models()
     warehouse_tables = warehouse_conn.get_stats_sync()
 
+    # ------------------------------------------------------------------
+    # Optional cost insights (v0.3.0)
+    # ------------------------------------------------------------------
+    bq_cost_insights: list = []
+    sf_cost_insights: list = []
+
+    if cfg.report.include_cost_section:
+        typer.echo("Fetching cost insights...")
+        if cfg.warehouse.type == "bigquery" and isinstance(warehouse_conn, BigQueryConnector):
+            bq_cost_insights = warehouse_conn.get_cost_insights_sync()
+            typer.echo(f"  BigQuery: {len(bq_cost_insights)} tables with cost data.")
+        elif cfg.warehouse.type == "snowflake" and isinstance(warehouse_conn, SnowflakeConnector):
+            sf_cost_insights = warehouse_conn.get_cost_insights_sync()
+            typer.echo(f"  Snowflake: {len(sf_cost_insights)} warehouses with credit data.")
+
     context = {
-        "airflow_dags": airflow_dags,
-        "airflow_tasks": airflow_tasks,
+        # The existing Airflow rules operate on "airflow_dags" / "airflow_tasks".
+        # Prefect and Dagster connectors populate the same keys via the shared
+        # Dag / Task models so all orchestrator rules work without modification.
+        "airflow_dags": orchestrator_dags,
+        "airflow_tasks": orchestrator_tasks,
+        "orchestrator_type": orch_type,
         "dbt_models": dbt_models,
         "warehouse_tables": warehouse_tables,
         "warehouse_type": cfg.warehouse.type,
+        # Cost insights — empty lists when include_cost_section=false
+        "bq_cost_insights": bq_cost_insights,
+        "sf_cost_insights": sf_cost_insights,
         # Rule-level configuration injected into context so rules stay stateless
         "rule_severity_overrides": cfg.rules.severity_overrides,
         "stale_threshold_days": cfg.rules.stale_threshold_days,
@@ -136,7 +193,7 @@ def audit(
     #
     #   score = max(0, round(100 - critical_penalty - warning_penalty))
     # -----------------------------------------------------------------------
-    dag_count = max(1, len(airflow_dags))
+    dag_count = max(1, len(orchestrator_dags))
     critical_count = sum(1 for i in issues if i.severity == "critical")
     warning_count = sum(1 for i in issues if i.severity == "warning")
     info_count = sum(1 for i in issues if i.severity == "info")
@@ -161,8 +218,10 @@ def audit(
         ),
         "metadata": {
             "orchestrator_url": cfg.orchestrator.base_url,
+            "orchestrator_type": orch_type,
             "warehouse_type": cfg.warehouse.type,
             "dbt_target": cfg.dbt.target,
+            "cost_insights_enabled": cfg.report.include_cost_section,
         },
     }
 
@@ -199,9 +258,14 @@ def init():
     default_config = """# PipelineProbe Configuration
 
 orchestrator:
+  # Supported types: airflow | prefect | dagster
+  type: airflow
   base_url: "http://localhost:8080"
   username: "admin"
   # Set PIPELINEPROBE_AIRFLOW_PASSWORD in environment instead of hardcoding here
+
+  # Prefect / Dagster Cloud: set api_key to your personal access token.
+  # api_key: ""
 
 dbt:
   project_dir: "./dbt"
@@ -214,25 +278,36 @@ warehouse:
   # Set PIPELINEPROBE_WAREHOUSE_DSN in environment
   # driver is usually derived from DSN (postgresql, snowflake, bigquery, etc)
 
+  # BigQuery: override default query region (default: region-us)
+  # bq_region: "region-eu"
+
 report:
   output_dir: "./reports"
   format: "both"
   fail_on_critical: 5
 
+  # Set to true to run cost-insight queries (BigQuery bytes billed,
+  # Snowflake credit consumption) and include findings in the report.
+  # Requires JOBS_BY_PROJECT access on BigQuery or ACCOUNTADMIN on Snowflake.
+  include_cost_section: false
+
 rules:
-  # How many days without a successful run before a DAG is flagged as stale.
+  # How many days without a successful run before a pipeline is flagged as stale.
   stale_threshold_days: 7
 
   # Maximum concurrent Airflow API calls during audit (runs + tasks per DAG).
+  # Not used for Prefect / Dagster connectors.
   fetch_concurrency: 10
 
   # Per-rule severity overrides.  Uncomment and adjust to match your team's SLAs.
   # Valid severities: critical | warning | info
   # severity_overrides:
-  #   missing_sla: critical      # fintech / real-time teams often require SLAs
-  #   missing_retries: warning   # default
-  #   stale_dags: warning        # default
-  #   high_failure_rate: critical  # default
+  #   missing_sla: critical          # fintech / real-time teams often require SLAs
+  #   missing_retries: warning       # default
+  #   stale_dags: warning            # default
+  #   high_failure_rate: critical    # default
+  #   expensive_bq_tables: warning   # default
+  #   snowflake_credit_spenders: warning  # default
 """
     with open("pipelineprobe.yml", "w") as f:
         f.write(default_config)
@@ -252,32 +327,72 @@ def doctor(
     all_ok = True
 
     # ------------------------------------------------------------------
-    # 1. Airflow — GET /api/v1/health returns metadatabase + scheduler state
+    # 1. Orchestrator connectivity probe
     # ------------------------------------------------------------------
-    typer.echo("[Airflow]")
+    orch_type = cfg.orchestrator.type.lower()
+    typer.echo(f"[Orchestrator — {orch_type}]")
+
+    headers: dict = {}
+    if cfg.orchestrator.api_key:
+        if orch_type == "dagster":
+            headers["Dagster-Cloud-Api-Token"] = cfg.orchestrator.api_key
+        else:
+            headers["Authorization"] = f"Bearer {cfg.orchestrator.api_key}"
+
+    auth = (
+        (cfg.orchestrator.username, cfg.orchestrator.password)
+        if cfg.orchestrator.username and cfg.orchestrator.password
+        else None
+    )
+
     try:
-        auth = (
-            (cfg.orchestrator.username, cfg.orchestrator.password)
-            if cfg.orchestrator.username and cfg.orchestrator.password
-            else None
-        )
         with httpx.Client(
             base_url=cfg.orchestrator.base_url,
             auth=auth,
+            headers=headers,
             verify=cfg.orchestrator.verify_ssl,
             timeout=10.0,
         ) as client:
-            resp = client.get("/api/v1/health")
-            resp.raise_for_status()
-            health = resp.json()
-            meta_status = health.get("metadatabase", {}).get("status", "unknown")
-            sched_status = health.get("scheduler", {}).get("status", "unknown")
-            typer.secho(
-                f"  Connection:   OK  ({cfg.orchestrator.base_url})",
-                fg=typer.colors.GREEN,
-            )
-            _print_status_line("  Metadatabase:", meta_status)
-            _print_status_line("  Scheduler:   ", sched_status)
+            if orch_type == "airflow":
+                resp = client.get("/api/v1/health")
+                resp.raise_for_status()
+                health = resp.json()
+                meta_status = health.get("metadatabase", {}).get("status", "unknown")
+                sched_status = health.get("scheduler", {}).get("status", "unknown")
+                typer.secho(
+                    f"  Connection:   OK  ({cfg.orchestrator.base_url})",
+                    fg=typer.colors.GREEN,
+                )
+                _print_status_line("  Metadatabase:", meta_status)
+                _print_status_line("  Scheduler:   ", sched_status)
+
+            elif orch_type == "prefect":
+                # Prefect health endpoint available in both Server and Cloud
+                resp = client.get("/api/health")
+                resp.raise_for_status()
+                typer.secho(
+                    f"  Connection:   OK  ({cfg.orchestrator.base_url})",
+                    fg=typer.colors.GREEN,
+                )
+
+            elif orch_type == "dagster":
+                # Dagster GraphQL introspection confirms the API is reachable
+                resp = client.post(
+                    "/graphql",
+                    json={"query": "{ __typename }"},
+                )
+                resp.raise_for_status()
+                typer.secho(
+                    f"  Connection:   OK  ({cfg.orchestrator.base_url})",
+                    fg=typer.colors.GREEN,
+                )
+
+            else:
+                typer.secho(
+                    f"  Unknown orchestrator type '{orch_type}' — skipping probe.",
+                    fg=typer.colors.YELLOW,
+                )
+
     except httpx.HTTPStatusError as exc:
         typer.secho(
             f"  Connection:   FAIL  (HTTP {exc.response.status_code}: {exc.response.text[:120]})",
@@ -363,6 +478,55 @@ def doctor(
             f"  {cfg.warehouse.type}: FAIL  ({exc})", fg=typer.colors.RED
         )
         all_ok = False
+
+    # ------------------------------------------------------------------
+    # 4. Cost-insight probe (only when include_cost_section=true)
+    # ------------------------------------------------------------------
+    if cfg.report.include_cost_section:
+        typer.echo("\n[Cost Insights]")
+        try:
+            if cfg.warehouse.type == "bigquery":
+                from google.cloud import bigquery as bq_lib
+
+                bq_client = bq_lib.Client(project=cfg.warehouse.project_id)
+                project = bq_client.project
+                region = cfg.warehouse.bq_region or "region-us"
+                probe_q = (
+                    f"SELECT COUNT(1) AS n "
+                    f"FROM `{project}`.`{region}`.INFORMATION_SCHEMA.JOBS_BY_PROJECT "
+                    f"LIMIT 1"
+                )
+                bq_client.query(probe_q).result()
+                typer.secho(
+                    "  BigQuery JOBS_BY_PROJECT: accessible", fg=typer.colors.GREEN
+                )
+            elif cfg.warehouse.type == "snowflake":
+                import snowflake.connector as sf
+
+                conn = sf.connect(
+                    account=cfg.warehouse.account,
+                    user=cfg.warehouse.username,
+                    password=cfg.warehouse.password,
+                    login_timeout=10,
+                )
+                cur = conn.cursor()
+                cur.execute(
+                    "SELECT COUNT(1) FROM SNOWFLAKE.ACCOUNT_USAGE.WAREHOUSE_METERING_HISTORY LIMIT 1"
+                )
+                cur.close()
+                conn.close()
+                typer.secho(
+                    "  Snowflake WAREHOUSE_METERING_HISTORY: accessible",
+                    fg=typer.colors.GREEN,
+                )
+            else:
+                typer.secho(
+                    f"  Cost insights not supported for warehouse type '{cfg.warehouse.type}'.",
+                    fg=typer.colors.YELLOW,
+                )
+        except Exception as exc:
+            typer.secho(f"  Cost insights: FAIL  ({exc})", fg=typer.colors.RED)
+            all_ok = False
 
     # ------------------------------------------------------------------
     # Summary

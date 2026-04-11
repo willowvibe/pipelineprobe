@@ -47,12 +47,12 @@ This file tracks known issues, planned improvements, and the current state of ea
 ## Open / Planned
 
 ### v0.2.0 — Connectors
-- [ ] Prefect connector.
-- [ ] Dagster connector.
+- [x] Prefect connector — `pipelineprobe/connectors/prefect.py`; maps flows/runs to shared Dag/DagRun models; Prefect Cloud auth via `orchestrator.api_key`.
+- [x] Dagster connector — `pipelineprobe/connectors/dagster.py`; queries Dagster GraphQL API; groups runs by job name; Dagster Cloud auth via `orchestrator.api_key`.
 
 ### v0.3.0 — Cost Insights
-- [ ] BigQuery: top tables by scanned bytes.
-- [ ] Snowflake: credit consumption per warehouse.
+- [x] BigQuery: top tables by scanned bytes — `BigQueryConnector.get_cost_insights_sync()` queries `INFORMATION_SCHEMA.JOBS_BY_PROJECT`; `check_expensive_bq_tables` rule (warning ≥ 500 GiB, critical ≥ 5 TiB).
+- [x] Snowflake: credit consumption per warehouse — `SnowflakeConnector.get_cost_insights_sync()` queries `WAREHOUSE_METERING_HISTORY`; `check_snowflake_credit_spenders` rule (warning ≥ 500, critical ≥ 5 000 credits).
 
 ### v1.0.0 — Lineage
 - [ ] Basic data lineage support (upstream/downstream DAG relationships).

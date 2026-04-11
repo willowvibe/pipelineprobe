@@ -7,9 +7,51 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [Unreleased]
+## [Unreleased] — v0.3.0 Cost Insights + v0.2.0 New Connectors
 
 ### Added
+
+#### v0.2.0 — New Orchestrator Connectors
+- **Prefect connector** (`pipelineprobe/connectors/prefect.py`) — connects to a
+  Prefect 2/3 Server or Cloud workspace via the Prefect REST API.  Maps flows
+  and flow runs to the shared `Dag` / `DagRun` models so all existing rules
+  (high failure rate, stale pipelines, …) work out of the box.  Prefect Cloud
+  authentication is handled via `orchestrator.api_key` in config.
+- **Dagster connector** (`pipelineprobe/connectors/dagster.py`) — queries the
+  Dagster GraphQL API to fetch runs, groups them by job name, and exposes each
+  job as a `Dag` object.  Supports Dagster Cloud via `orchestrator.api_key`.
+- `orchestrator.type` config field now supports `"airflow"` (default),
+  `"prefect"`, and `"dagster"`.  The `doctor` command probes all three.
+- `orchestrator.api_key` config field (+ `PIPELINEPROBE_ORCHESTRATOR_API_KEY`
+  env var) for Prefect Cloud / Dagster Cloud bearer-token authentication.
+- `orchestrator_type` key added to the `summary.metadata` block in JSON/HTML
+  reports so downstream tooling knows which orchestrator was audited.
+
+#### v0.3.0 — Cost Insights
+- **BigQuery cost insights** — `BigQueryConnector.get_cost_insights_sync()`
+  queries `INFORMATION_SCHEMA.JOBS_BY_PROJECT` (last 30 days) and returns the
+  25 tables with the highest bytes billed.
+- **Snowflake credit insights** — `SnowflakeConnector.get_cost_insights_sync()`
+  queries `SNOWFLAKE.ACCOUNT_USAGE.WAREHOUSE_METERING_HISTORY` (last 30 days)
+  and returns credit consumption per virtual warehouse.
+- **`check_expensive_bq_tables`** rule — warning at ≥ 500 GiB billed / 30 days,
+  critical at ≥ 5 TiB.
+- **`check_snowflake_credit_spenders`** rule — warning at ≥ 500 credits / 30 days,
+  critical at ≥ 5 000 credits.
+- `report.include_cost_section: true` config flag enables cost-insight queries
+  during `pipelineprobe audit`; defaults to `false` (opt-in to avoid requiring
+  elevated IAM permissions by default).
+- `warehouse.bq_region` config field allows overriding the default BigQuery
+  multi-region (`region-us`) for teams using e.g. `region-eu`.
+- `doctor` command extended to probe cost-insight permissions when
+  `include_cost_section: true` is set.
+
+#### General
+- `SUPPORTED_ORCHESTRATORS` constant exported from `pipelineprobe.config` for
+  validation use in the CLI.
+- `init` command now generates a config template documenting all new fields.
+
+### Added (previous Unreleased — UI / bug fixes)
 - **Report UI overhaul** — sticky topbar, animated SVG health-score ring, severity filter buttons (All / Critical / Warnings / Info), affected-resource tags on each finding card, subtle per-severity background tints, and responsive print styles.
 - **Info count card** — the summary grid now shows a fourth card for informational findings alongside Critical and Warnings.
 - `info_count` included in the JSON report summary for downstream tooling.
