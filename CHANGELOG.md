@@ -2,7 +2,7 @@
 
 All notable changes to PipelineProbe are documented here.
 
-The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
+Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
@@ -10,6 +10,10 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Report UI overhaul** — sticky topbar, animated SVG health-score ring, severity filter buttons (All / Critical / Warnings / Info), affected-resource tags on each finding card, subtle per-severity background tints, and responsive print styles.
+- **Info count card** — the summary grid now shows a fourth card for informational findings alongside Critical and Warnings.
+- `info_count` included in the JSON report summary for downstream tooling.
+- `ring_offset` computed in the renderer and injected into the Jinja2 template so the SVG ring accurately reflects the health score.
 - BigQuery connector querying `INFORMATION_SCHEMA.TABLE_STORAGE` and `COLUMNS` for real `has_timestamps` detection.
 - Snowflake connector using a CTE pattern to work around correlated subquery restrictions.
 - `python-dateutil` declared as an explicit dependency in `pyproject.toml`.
@@ -34,12 +38,12 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ## [0.1.0] — 2026-03-15
 
 ### Added
-- Phase 0: Project skeleton, `pyproject.toml`, CI workflow (ruff + pytest), CLI entry point.
-- Phase 1 (MVP connectors):
+- **Phase 0** — Project skeleton, `pyproject.toml`, CI workflow (ruff + pytest), CLI entry point.
+- **Phase 1 — MVP connectors:**
   - `AirflowConnector` — fetches DAGs, DAG runs, and task configurations via the Airflow REST API.
   - `DbtConnector` — reads `manifest.json` and `run_results.json`; counts tests per model.
   - `PostgresConnector` — queries `pg_stat_user_tables` and `information_schema.columns`.
-- Phase 1 (Rules Engine):
+- **Phase 1 — Rules Engine:**
   - `check_missing_retries` — warns on tasks with no retry configuration.
   - `check_missing_slas` — informs on tasks with no SLA.
   - `check_high_failure_rate` — critical alert for DAGs with >20% failure rate over ≥5 runs.
@@ -48,13 +52,20 @@ Versioning follows [Semantic Versioning](https://semver.org/).
   - `check_failing_models` — critical alert for dbt models that failed their last run.
   - `check_large_tables` — warns on tables with >10M rows.
   - `check_missing_timestamps` — warns on tables >1M rows without `created_at`/`updated_at`.
-- Phase 1 (Report Renderer): Jinja2 HTML template; JSON output via `model_dump()`.
-- Phase 2 (DX & CI):
+- **Phase 1 — Report Renderer** — Jinja2 HTML template; JSON output via `model_dump()`.
+- **Phase 2 — DX & CI:**
   - `pipelineprobe init` command generating a default `pipelineprobe.yml`.
   - `--fail-on-critical` and `--format` CLI overrides.
-  - `examples/github_action.yml` GitHub Actions workflow.
+  - `examples/github-actions/pipelineprobe.yml` GitHub Actions workflow.
   - `docs/ci-integration.md`.
   - `.gitignore` with standard Python exclusions.
-- Phase 3 (Extended Integrations):
+- **Phase 3 — Extended Integrations:**
   - `BigQueryConnector`.
   - `SnowflakeConnector`.
+  - `pipelineprobe doctor` command for connectivity validation.
+  - `pipelineprobe diff` command for regression detection between two JSON reports.
+
+---
+
+[Unreleased]: https://github.com/willowvibe/pipelineprobe/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/willowvibe/pipelineprobe/releases/tag/v0.1.0

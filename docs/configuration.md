@@ -1,6 +1,6 @@
 # Configuration Reference
 
-This document describes every configuration option supported by PipelineProbe, including the `pipelineprobe.yml` YAML fields and recognised environment variables.
+This document describes every configuration option supported by PipelineProbe, including `pipelineprobe.yml` YAML fields, environment variable overrides, and CLI flags.
 
 ---
 
@@ -28,9 +28,13 @@ report:
   output_dir: "./reports"
   format: "both"
   fail_on_critical: 5
+
+rules:
+  stale_threshold_days: 7
+  fetch_concurrency: 10
 ```
 
-> **Tip**: Run `pipelineprobe init` to generate this file with defaults in your current directory.
+> **Tip** — Run `pipelineprobe init` to generate this file with defaults in your current directory.
 
 ---
 
@@ -43,9 +47,9 @@ report:
 | `username` | string | `"admin"` | Airflow username. |
 | `password` | string | `"admin"` | Airflow password. **Prefer the env var** `PIPELINEPROBE_AIRFLOW_PASSWORD`. |
 | `verify_ssl` | boolean | `false` | Whether to verify TLS certificates. Set to `true` in production. |
-| `lookback_days` | integer | `14` | Number of days of DAG run history to fetch for analysis. |
+| `lookback_days` | integer | `14` | Days of DAG run history to fetch for analysis. |
 
-### Environment Variable Override
+### Environment Variable
 
 | Variable | Overrides |
 |---|---|
@@ -58,17 +62,17 @@ report:
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `project_dir` | string | `"./analytics"` | Root directory of the dbt project. |
-| `target` | string | `"prod"` | dbt target name (informational only, used for labelling). |
-| `manifest_path` | string | `"target/manifest.json"` | Path to `manifest.json` **relative to `project_dir`**. |
+| `target` | string | `"prod"` | dbt target name (informational — used for report labelling). |
+| `manifest_path` | string | `"target/manifest.json"` | Path to `manifest.json` relative to `project_dir`. |
 | `run_results_path` | string | `"target/run_results.json"` | Path to `run_results.json` relative to `project_dir`. |
 
-> **Note**: If `manifest.json` does not exist, the dbt connector is skipped gracefully and the report will note the absence. No error is raised.
+> **Note** — If `manifest.json` does not exist, the dbt connector is skipped gracefully and the report will note its absence. No error is raised.
 
 ---
 
 ## `warehouse` — Warehouse Connection
 
-The `type` field selects which connector is used.
+The `type` field selects which connector is used. Each warehouse type has its own set of required fields.
 
 ### PostgreSQL
 
@@ -81,7 +85,7 @@ warehouse:
 | Field | Description |
 |---|---|
 | `type` | Must be `"postgres"` |
-| `dsn` | A full PostgreSQL DSN string. **Prefer the env var** `PIPELINEPROBE_WAREHOUSE_DSN`. |
+| `dsn` | Full PostgreSQL DSN string. **Prefer the env var** `PIPELINEPROBE_WAREHOUSE_DSN`. |
 
 ### BigQuery
 
@@ -94,9 +98,9 @@ warehouse:
 | Field | Description |
 |---|---|
 | `type` | Must be `"bigquery"` |
-| `project_id` | GCP project ID. If omitted, the default project from `GOOGLE_APPLICATION_CREDENTIALS` or ADC is used. |
+| `project_id` | GCP project ID. If omitted, falls back to the default project from ADC. |
 
-Authentication is handled via [Application Default Credentials (ADC)](https://cloud.google.com/docs/authentication/application-default-credentials). Set the `GOOGLE_APPLICATION_CREDENTIALS` env var to the path of a service account JSON key.
+Authentication is handled via [Application Default Credentials (ADC)](https://cloud.google.com/docs/authentication/application-default-credentials). Set `GOOGLE_APPLICATION_CREDENTIALS` to the path of a service account JSON key, or use `gcloud auth application-default login` locally.
 
 ### Snowflake
 
@@ -113,13 +117,14 @@ warehouse:
 | `type` | Must be `"snowflake"` |
 | `account` | Snowflake account identifier (e.g. `xyz.us-east-1`). |
 | `username` | Snowflake user. |
-| `password` | Snowflake password. |
+| `password` | Snowflake password. Store in a secret manager or CI secret rather than in the YAML. |
 
-### Environment Variable Override
+### Environment Variables
 
 | Variable | Overrides |
 |---|---|
 | `PIPELINEPROBE_WAREHOUSE_DSN` | `warehouse.dsn` (PostgreSQL only) |
+| `GOOGLE_APPLICATION_CREDENTIALS` | Path to BigQuery service account JSON key |
 
 ---
 
@@ -128,9 +133,43 @@ warehouse:
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `output_dir` | string | `"./reports"` | Directory where reports are written. Created automatically if missing. |
-| `format` | string | `"html"` | Output format: `html`, `json`, or `both`. Can be overridden via `--format` CLI flag. |
+| `format` | string | `"html"` | Output format: `html`, `json`, or `both`. Can be overridden with `--format`. |
 | `include_cost_section` | boolean | `false` | Reserved for a future cost analysis section. Has no effect in v0.1. |
-| `fail_on_critical` | integer | `5` | Non-zero exit code is returned if the number of critical issues **exceeds** this value. Set to `0` to fail on any single critical issue. Can be overridden via `--fail-on-critical` CLI flag. |
+| `fail_on_critical` | integer | `5` | Return exit code `1` when critical issue count **exceeds** this value. Set to `0` to fail on any single critical issue. Can be overridden with `--fail-on-critical`. |
+
+---
+
+## `rules` — Rule Engine Settings
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `stale_threshold_days` | integer | `7` | Number of days without a successful DAG run before it is flagged as stale. |
+| `fetch_concurrency` | integer | `10` | Maximum concurrent Airflow API calls when fetching DAG run history and task configs. |
+| `severity_overrides` | dict | `{}` | Per-rule severity overrides. See table below. |
+
+### `severity_overrides`
+
+Override the default severity of any built-in rule. Valid values are `critical`, `warning`, or `info`.
+
+```yaml
+rules:
+  severity_overrides:
+    missing_sla: critical        # default: info   — raise to critical for SLA-sensitive teams
+    missing_retries: warning     # default: warning — no change needed
+    stale_dags: critical         # default: warning — raise to critical for prod monitors
+    high_failure_rate: critical  # default: critical
+```
+
+| Rule key | Default severity | Description |
+|---|---|---|
+| `missing_retries` | `warning` | Tasks with zero retries configured |
+| `missing_slas` | `info` | Tasks without an SLA timeout |
+| `high_failure_rate` | `critical` | DAGs with >20% failure rate over ≥5 runs |
+| `stale_dags` | `warning` | Active DAGs with no successful run in `stale_threshold_days` |
+| `missing_tests` | `warning` | dbt models with zero tests |
+| `failing_models` | `critical` | dbt models that failed their last run |
+| `large_tables` | `warning` | Tables with >10M rows |
+| `missing_timestamps` | `warning` | Tables >1M rows without `created_at` / `updated_at` |
 
 ---
 
@@ -147,15 +186,22 @@ pipelineprobe audit \
 
 | Flag | Equivalent Config | Description |
 |---|---|---|
-| `--config` | N/A | Path to the YAML config file. |
-| `--format` | `report.format` | Override the report output format. |
-| `--fail-on-critical` | `report.fail_on_critical` | Override the critical issue threshold. |
+| `--config FILE` | — | Path to the YAML config file. |
+| `--format FORMAT` | `report.format` | Override report format: `html`, `json`, or `both`. |
+| `--fail-on-critical N` | `report.fail_on_critical` | Override the critical issue threshold. |
+
+### Exit Codes
+
+| Code | Meaning |
+|---|---|
+| `0` | Audit completed; critical count at or below `fail_on_critical` |
+| `1` | Critical count exceeds threshold, or a config / connectivity error occurred |
 
 ---
 
 ## Security Best Practices
 
-1. **Never store passwords in `pipelineprobe.yml` when committing to source control.** Use environment variables instead.
-2. `.pipelineprobe.yml` is listed in `.gitignore` by default. Verify this is in place.
-3. PipelineProbe is **read-only** — it never writes to Airflow, dbt, or your warehouse.
-4. DSN strings and passwords are never written to report output.
+1. **Never store passwords in `pipelineprobe.yml` when committing to source control.** Use environment variables or a secrets manager instead.
+2. `pipelineprobe.yml` is listed in `.gitignore` by default — verify it is in place before your first commit.
+3. PipelineProbe is **strictly read-only** — it never writes to Airflow, dbt, or your warehouse.
+4. DSN strings and passwords are never written to any report output (HTML or JSON).
