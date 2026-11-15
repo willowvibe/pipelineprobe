@@ -1,0 +1,124 @@
+{
+  "metadata": {
+    "dbt_schema_version": "https://schemas.getdbt.com/dbt/run-results/v4.json",
+    "dbt_version": "1.6.3",
+    "generated_at": "2026-11-15T09:02:31.000000Z",
+    "invocation_id": "0f5a2c9e-1b7d-4c3a-9e2f-8d6b4a1c7e50",
+    "env": {}
+  },
+  "results": [
+    {
+      "status": "success",
+      "timing": [
+        {
+          "name": "compile",
+          "started_at": "2026-11-15T09:01:04.120000Z",
+          "completed_at": "2026-11-15T09:01:04.860000Z"
+        },
+        {
+          "name": "execute",
+          "started_at": "2026-11-15T09:01:04.870000Z",
+          "completed_at": "2026-11-15T09:02:12.410000Z"
+        }
+      ],
+      "thread_id": "Thread-1",
+      "execution_time": 68.29,
+      "adapter_response": {
+        "_message": "CREATE TABLE",
+        "code": "CREATE TABLE",
+        "rows_affected": -1
+      },
+      "message": "CREATE TABLE",
+      "failures": null,
+      "unique_id": "model.quickstart.orders",
+      "compiled": true,
+      "compiled_code": "select\n    order_id,\n    customer_id,\n    order_date,\n    amount as order_total,\n    status,\n    created_at,\n    updated_at\nfrom analytics.fact_orders\nwhere status != 'cancelled'",
+      "relation_name": "\"warehouse\".\"analytics\".\"orders\""
+    },
+    {
+      "status": "pass",
+      "timing": [
+        {
+          "name": "compile",
+          "started_at": "2026-11-15T09:02:12.500000Z",
+          "completed_at": "2026-11-15T09:02:12.610000Z"
+        },
+        {
+          "name": "execute",
+          "started_at": "2026-11-15T09:02:12.620000Z",
+          "completed_at": "2026-11-15T09:02:18.930000Z"
+        }
+      ],
+      "thread_id": "Thread-2",
+      "execution_time": 6.43,
+      "adapter_response": {
+        "_message": "SELECT 0",
+        "code": "SELECT",
+        "rows_affected": 0
+      },
+      "message": "PASS",
+      "failures": 0,
+      "unique_id": "test.quickstart.not_null_orders_order_id",
+      "compiled": true,
+      "compiled_code": "select count(*) as validation_errors\nfrom analytics.orders\nwhere order_id is null",
+      "relation_name": null
+    },
+    {
+      "status": "pass",
+      "timing": [
+        {
+          "name": "compile",
+          "started_at": "2026-11-15T09:02:12.500000Z",
+          "completed_at": "2026-11-15T09:02:12.620000Z"
+        },
+        {
+          "name": "execute",
+          "started_at": "2026-11-15T09:02:12.630000Z",
+          "completed_at": "2026-11-15T09:02:24.180000Z"
+        }
+      ],
+      "thread_id": "Thread-3",
+      "execution_time": 11.68,
+      "adapter_response": {
+        "_message": "SELECT 0",
+        "code": "SELECT",
+        "rows_affected": 0
+      },
+      "message": "PASS",
+      "failures": 0,
+      "unique_id": "test.quickstart.unique_orders_order_id",
+      "compiled": true,
+      "compiled_code": "select order_id, count(*) as validation_errors\nfrom analytics.orders\nwhere order_id is not null\ngroup by order_id\nhaving count(*) > 1",
+      "relation_name": null
+    },
+    {
+      "status": "error",
+      "timing": [
+        {
+          "name": "compile",
+          "started_at": "2026-11-15T09:02:24.300000Z",
+          "completed_at": "2026-11-15T09:02:24.910000Z"
+        },
+        {
+          "name": "execute",
+          "started_at": "2026-11-15T09:02:24.920000Z",
+          "completed_at": "2026-11-15T09:02:30.990000Z"
+        }
+      ],
+      "thread_id": "Thread-1",
+      "execution_time": 6.69,
+      "adapter_response": {
+        "_message": "Database Error in model customers (models/marts/customers.sql)",
+        "code": "error"
+      },
+      "message": "Database Error in model customers (models/marts/customers.sql)\n  canceling statement due to statement timeout\n  compiled Code at target/compiled/quickstart/models/marts/customers.sql",
+      "failures": null,
+      "unique_id": "model.quickstart.customers",
+      "compiled": true,
+      "compiled_code": "select\n    customer_id,\n    min(order_date) as first_order_date,\n    max(order_date) as most_recent_order_date,\n    count(*) as number_of_orders\nfrom analytics.fact_orders\ngroup by customer_id",
+      "relation_name": null
+    }
+  ],
+  "elapsed_time": 86.87,
+  "args": {}
+}

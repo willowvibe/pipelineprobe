@@ -1,0 +1,26 @@
+# dbt project for the PipelineProbe quickstart.
+#
+# The audit only reads the artifacts checked in under target/ (manifest.json
+# and run_results.json), which record a synthetic dbt run.  No dbt command is
+# executed by the quickstart, so this file exists to make the directory a
+# normal, parseable dbt project.
+
+name: 'quickstart'
+version: '1.0.0'
+config-version: 2
+
+profile: 'quickstart'
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+models:
+  quickstart:
+    +materialized: table
