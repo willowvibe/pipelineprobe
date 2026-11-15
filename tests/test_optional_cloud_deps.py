@@ -52,6 +52,17 @@ def _output(result) -> str:
     return (result.output or "") + (getattr(result, "stderr", "") or "")
 
 
+def _assert_clean_exit(result) -> None:
+    """Exit 1 must come from typer.Exit, not from an uncaught crash."""
+    assert result.exit_code == 1
+    assert isinstance(result.exception, SystemExit), (
+        f"expected SystemExit (typer.Exit), got {result.exception!r}"
+    )
+    output = _output(result)
+    assert "Traceback" not in output
+    assert "UnboundLocalError" not in output
+
+
 def _block_cloud_sdk(monkeypatch, connector: str, sdk_module: str) -> None:
     """Simulate a base install by blocking a cloud SDK and its connector module."""
     # Another test module may already have imported the connector module, which
@@ -95,7 +106,7 @@ def test_audit_bigquery_without_cloud_extra_exits_with_hint(monkeypatch, tmp_pat
         airflow_cls.return_value.get_dags.return_value = []
         result = runner.invoke(app, ["audit", "--config", str(config)])
 
-    assert result.exit_code == 1
+    _assert_clean_exit(result)
     output = _output(result)
     assert INSTALL_HINT in output
     assert "BigQuery support requires the 'cloud' extra" in output
@@ -110,7 +121,7 @@ def test_audit_snowflake_without_cloud_extra_exits_with_hint(monkeypatch, tmp_pa
         airflow_cls.return_value.get_dags.return_value = []
         result = runner.invoke(app, ["audit", "--config", str(config)])
 
-    assert result.exit_code == 1
+    _assert_clean_exit(result)
     output = _output(result)
     assert INSTALL_HINT in output
     assert "Snowflake support requires the 'cloud' extra" in output
@@ -129,7 +140,7 @@ def test_doctor_reports_missing_bigquery_sdk(monkeypatch, tmp_path):
         }
         result = runner.invoke(app, ["doctor", "--config", str(config)])
 
-    assert result.exit_code == 1
+    _assert_clean_exit(result)
     assert f'BigQuery: MISSING SDK — {INSTALL_HINT}' in _output(result)
 
 

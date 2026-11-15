@@ -135,6 +135,11 @@ def audit(
     # ------------------------------------------------------------------
     dbt_conn = DbtConnector(cfg.dbt)
 
+    # Bound before the branch so a reordered guard can never hit an
+    # UnboundLocalError; the isinstance checks below use them.
+    BigQueryConnector = None
+    SnowflakeConnector = None
+
     if cfg.warehouse.type == "bigquery":
         typer.echo("Using BigQuery connector...")
         try:
@@ -568,6 +573,12 @@ def doctor(
                     f"  Cost insights not supported for warehouse type '{cfg.warehouse.type}'.",
                     fg=typer.colors.YELLOW,
                 )
+        except ImportError:
+            typer.secho(
+                '  Cost insights: MISSING SDK — pip install "pipelineprobe[cloud]"',
+                fg=typer.colors.RED,
+            )
+            all_ok = False
         except Exception as exc:
             typer.secho(f"  Cost insights: FAIL  ({exc})", fg=typer.colors.RED)
             all_ok = False
