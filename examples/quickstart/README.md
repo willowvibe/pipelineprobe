@@ -70,9 +70,9 @@ report. The exact health score is computed at run time; the report always
 contains, qualitatively:
 
 - **Airflow / tasks** — the two "unhealthy" DAGs (`daily_sales_pipeline` and
-  `nightly_customer_sync`) have tasks with no retries (warnings) and no SLA
-  (informational notes). The six `healthy_pipeline_*` DAGs have both, so the
-  report is not uniformly bad.
+  `nightly_customer_sync`) have tasks with no retries (warnings). Airflow
+  2.7.1's REST API does not expose task SLA configuration, so the audit makes
+  no missing-SLA claims and produces no SLA findings.
 - **Airflow / DAGs** — `nightly_customer_sync` fails two of its six seeded runs,
   which trips the high-failure-rate rule as a critical issue.
 - **dbt** — `customers` has no tests (warning) and its last recorded run ended

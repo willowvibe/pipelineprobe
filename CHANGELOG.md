@@ -61,6 +61,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - `python-dateutil` declared as an explicit dependency in `pyproject.toml`.
 
 ### Fixed
+- `check_missing_slas` no longer reports false "no SLA configured" findings when the orchestrator API does not expose task SLA configuration (Airflow 2.7.1 never serializes `sla`).
 - `pipelineprobe audit --format` was shadowing Python's built-in `format()`. Renamed CLI parameter to `report_format` internally.
 - Added validation to `--format` — passing unsupported values (e.g. `csv`) now exits with a clear error.
 - `get_dags()` in the Airflow connector now paginates correctly. Previously, organisations with more than 100 DAGs would silently receive truncated results.

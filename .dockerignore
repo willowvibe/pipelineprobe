@@ -1,0 +1,31 @@
+# Version control
+.git
+.gitignore
+
+# Environments
+.venv
+venv
+
+# Python bytecode and caches
+__pycache__
+*.py[cod]
+*.egg-info
+.ruff_cache
+.pytest_cache
+
+# Build artifacts
+dist
+build
+
+# Generated reports
+reports
+
+# Internal / non-runtime directories
+.superpowers
+video-work
+site
+
+# Tests, docs and lockfile are not needed to build the image
+tests
+docs
+uv.lock

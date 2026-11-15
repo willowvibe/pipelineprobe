@@ -22,6 +22,9 @@ class Task(BaseModel):
     task_id: str
     retries: int
     sla: timedelta | None = None
+    # False when the orchestrator API does not expose SLA configuration, in
+    # which case rules must not claim that an SLA is missing.
+    sla_known: bool = True
     has_alerts: bool
 
 

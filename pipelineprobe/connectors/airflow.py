@@ -116,6 +116,7 @@ class AirflowConnector:
                         task_id=t.get("task_id", ""),
                         retries=int(retries) if retries is not None else 0,
                         sla=sla_val,
+                        sla_known=("sla" in t),
                         has_alerts=has_alerts,
                     )
                 )
@@ -156,6 +157,7 @@ class AirflowConnector:
                     task_id=t.get("task_id", ""),
                     retries=int(retries) if retries is not None else 0,
                     sla=sla_val,
+                    sla_known=("sla" in t),
                     has_alerts=has_alerts,
                 )
             )

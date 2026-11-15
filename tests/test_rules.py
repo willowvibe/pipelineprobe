@@ -34,6 +34,24 @@ def test_check_missing_slas(mock_airflow_tasks):
     assert "task_no_retries" in issue.affected_resources
 
 
+def test_check_missing_slas_skipped_when_not_known():
+    from pipelineprobe.models import Task
+
+    tasks = [
+        Task(
+            dag_id="test_dag",
+            task_id="task_with_unknown_sla",
+            retries=1,
+            sla=None,
+            sla_known=False,
+            has_alerts=False,
+        )
+    ]
+    issues = check_missing_slas({"airflow_tasks": tasks})
+
+    assert issues == []
+
+
 def test_check_stale_dags():
     dags = [
         Dag(
