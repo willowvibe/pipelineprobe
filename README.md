@@ -9,9 +9,9 @@ A read-only audit of Airflow, dbt and your warehouse that produces one prioritiz
 
 [![PipelineProbe demo](docs/assets/pipelineprobe-demo.gif)](https://github.com/willowvibe/pipelineprobe/releases/download/v0.3.0/pipelineprobe-demo.mp4)
 
-A 90-second demo (the GIF above is a short preview) on synthetic sample data from the bundled quickstart stack. No client or production data.
+A narrated demo (the GIF above is a short preview) on synthetic sample data from the bundled quickstart stack. No client or production data.
 
-[Watch the full 90-second demo →](https://github.com/willowvibe/pipelineprobe/releases/download/v0.3.0/pipelineprobe-demo.mp4)
+[Watch the full narrated demo →](https://github.com/willowvibe/pipelineprobe/releases/download/v0.3.0/pipelineprobe-demo.mp4)
 
 ## What it does
 
@@ -19,7 +19,7 @@ A 90-second demo (the GIF above is a short preview) on synthetic sample data fro
 |---|---|
 | **Airflow** | DAG failure rates, tasks with no retries, stale DAGs |
 | **dbt** | Models with zero tests, models whose last run failed |
-| **Warehouse** | Very large tables, tables missing `created_at` / `updated_at` |
+| **Warehouse** | Postgres: very large tables, tables missing `created_at` / `updated_at`. BigQuery / Snowflake: opt-in cost insights |
 | **Report** | 0–100 health score, critical / warning / info counts, severity filter, HTML + JSON |
 
 PipelineProbe makes no SLA findings: Airflow 2.7.1 does not expose task SLA configuration through its API, so the audit deliberately makes no such claim.
@@ -69,6 +69,8 @@ The same report is committed at [site/report/index.html](site/report/index.html)
 
 ## CI gate and diff
 
+Both commands read `pipelineprobe.yml` from the current directory; `pipelineprobe init` writes a starter file there.
+
 Gate a build on critical findings:
 
 ```bash
@@ -88,7 +90,7 @@ pipelineprobe diff baseline.json report.json
 ## Who this is for
 
 - Data engineers and team leads inheriting a pipeline they did not build.
-- Consultants who need a shareable audit artefact in an hour.
+- Consultants who need a shareable audit artefact without a week of setup.
 - Anyone adding a pipeline health gate to CI.
 
 ## Need this run against your stack?
