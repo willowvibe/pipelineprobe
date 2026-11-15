@@ -77,7 +77,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [0.1.0] — 2026-03-15
+## 0.1.0 — 2026-03-15
 
 ### Added
 - **Phase 0** — Project skeleton, `pyproject.toml`, CI workflow (ruff + pytest), CLI entry point.
@@ -110,5 +110,4 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ---
 
 [Unreleased]: https://github.com/willowvibe/pipelineprobe/compare/v0.3.0...HEAD
-[0.3.0]: https://github.com/willowvibe/pipelineprobe/compare/v0.1.0...v0.3.0
-[0.1.0]: https://github.com/willowvibe/pipelineprobe/releases/tag/v0.1.0
+[0.3.0]: https://github.com/willowvibe/pipelineprobe/releases/tag/v0.3.0

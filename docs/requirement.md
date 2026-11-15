@@ -381,7 +381,7 @@ For integration into CI or other tools (including ObservaKit).
   - Postgres table stats.
 - Implement 8–10 core rules.
 - Implement HTML renderer (Jinja2 template, Tailwind or simple CSS).
-- Ship v0.1.0 to PyPI + Docker Hub.
+- Package v0.1.0 as a GitHub release (wheel + sdist) with a Dockerfile for local builds.
 
 ### Phase 2 — DX & CI Integration (2 weeks)
 
