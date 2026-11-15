@@ -74,6 +74,8 @@ rules:
 
 The `type` field selects which connector is used. Each warehouse type has its own set of required fields.
 
+> **Note** — BigQuery and Snowflake support require the optional `cloud` extra: `pip install "pipelineprobe[cloud]"`. PostgreSQL works with the base install.
+
 ### PostgreSQL
 
 ```yaml

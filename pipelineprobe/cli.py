@@ -10,12 +10,10 @@ import typer
 from pipelineprobe import __version__
 from pipelineprobe.config import SUPPORTED_ORCHESTRATORS, load_config
 from pipelineprobe.connectors.airflow import AirflowConnector
-from pipelineprobe.connectors.bigquery import BigQueryConnector
 from pipelineprobe.connectors.dagster import DagsterConnector
 from pipelineprobe.connectors.dbt import DbtConnector
 from pipelineprobe.connectors.postgres import PostgresConnector
 from pipelineprobe.connectors.prefect import PrefectConnector
-from pipelineprobe.connectors.snowflake import SnowflakeConnector
 from pipelineprobe.renderer import ReportRenderer
 from pipelineprobe.rules import get_configured_engine
 
@@ -46,6 +44,17 @@ def main(
     ),
 ):
     pass
+
+
+def _require_cloud_extra(feature: str, package: str) -> None:
+    """Exit with install instructions when an optional cloud SDK is absent."""
+    typer.secho(
+        f"{feature} support requires the 'cloud' extra: "
+        f'pip install "pipelineprobe[cloud]"',
+        fg=typer.colors.RED,
+        err=True,
+    )
+    raise typer.Exit(code=1)
 
 
 @app.command()
@@ -128,11 +137,17 @@ def audit(
 
     if cfg.warehouse.type == "bigquery":
         typer.echo("Using BigQuery connector...")
-        warehouse_conn: BigQueryConnector | SnowflakeConnector | PostgresConnector = (
-            BigQueryConnector(cfg.warehouse)
-        )
+        try:
+            from pipelineprobe.connectors.bigquery import BigQueryConnector
+        except ImportError:
+            _require_cloud_extra("BigQuery", "google-cloud-bigquery")
+        warehouse_conn = BigQueryConnector(cfg.warehouse)
     elif cfg.warehouse.type == "snowflake":
         typer.echo("Using Snowflake connector...")
+        try:
+            from pipelineprobe.connectors.snowflake import SnowflakeConnector
+        except ImportError:
+            _require_cloud_extra("Snowflake", "snowflake-connector-python")
         warehouse_conn = SnowflakeConnector(cfg.warehouse)
     else:
         typer.echo("Using Postgres connector...")
@@ -460,30 +475,44 @@ def doctor(
             typer.secho(f"  Postgres:  OK  (@{dsn_safe})", fg=typer.colors.GREEN)
 
         elif cfg.warehouse.type == "bigquery":
-            from google.cloud import bigquery
-
-            client = bigquery.Client(project=cfg.warehouse.project_id)
-            # list_datasets is the lightest possible probe
-            next(iter(client.list_datasets(max_results=1)), None)
-            typer.secho(
-                f"  BigQuery:  OK  (project={cfg.warehouse.project_id})",
-                fg=typer.colors.GREEN,
-            )
+            try:
+                from google.cloud import bigquery
+            except ImportError:
+                typer.secho(
+                    '  BigQuery: MISSING SDK — pip install "pipelineprobe[cloud]"',
+                    fg=typer.colors.RED,
+                )
+                all_ok = False
+            else:
+                client = bigquery.Client(project=cfg.warehouse.project_id)
+                # list_datasets is the lightest possible probe
+                next(iter(client.list_datasets(max_results=1)), None)
+                typer.secho(
+                    f"  BigQuery:  OK  (project={cfg.warehouse.project_id})",
+                    fg=typer.colors.GREEN,
+                )
 
         elif cfg.warehouse.type == "snowflake":
-            import snowflake.connector
-
-            conn = snowflake.connector.connect(
-                account=cfg.warehouse.account,
-                user=cfg.warehouse.username,
-                password=cfg.warehouse.password,
-                login_timeout=10,
-            )
-            conn.close()
-            typer.secho(
-                f"  Snowflake: OK  (account={cfg.warehouse.account})",
-                fg=typer.colors.GREEN,
-            )
+            try:
+                import snowflake.connector
+            except ImportError:
+                typer.secho(
+                    '  Snowflake: MISSING SDK — pip install "pipelineprobe[cloud]"',
+                    fg=typer.colors.RED,
+                )
+                all_ok = False
+            else:
+                conn = snowflake.connector.connect(
+                    account=cfg.warehouse.account,
+                    user=cfg.warehouse.username,
+                    password=cfg.warehouse.password,
+                    login_timeout=10,
+                )
+                conn.close()
+                typer.secho(
+                    f"  Snowflake: OK  (account={cfg.warehouse.account})",
+                    fg=typer.colors.GREEN,
+                )
         else:
             typer.secho(
                 f"  Unknown warehouse type '{cfg.warehouse.type}' — skipping probe.",
