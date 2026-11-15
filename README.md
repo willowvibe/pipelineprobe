@@ -3,6 +3,7 @@
 A read-only audit of Airflow, dbt and your warehouse that produces one prioritized report in one command.
 
 [![CI](https://github.com/willowvibe/pipelineprobe/actions/workflows/ci.yml/badge.svg)](https://github.com/willowvibe/pipelineprobe/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/pipelineprobe)](https://pypi.org/project/pipelineprobe/)
 [![GitHub release](https://img.shields.io/github/v/release/willowvibe/pipelineprobe)](https://github.com/willowvibe/pipelineprobe/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/)
@@ -26,25 +27,23 @@ PipelineProbe makes no SLA findings: Airflow 2.7.1 does not expose task SLA conf
 
 ## Install
 
-This release is installed from GitHub. The wheel is attached to the v0.3.0 release:
-
 ```bash
-pip install https://github.com/willowvibe/pipelineprobe/releases/download/v0.3.0/pipelineprobe-0.3.0-py3-none-any.whl
+pip install pipelineprobe
 ```
 
-Or install the tagged source with [pipx](https://pipx.pypa.io/):
+Or install it with [pipx](https://pipx.pypa.io/) so the CLI keeps its own environment:
 
 ```bash
-pipx install git+https://github.com/willowvibe/pipelineprobe@v0.3.0
+pipx install pipelineprobe
 ```
 
-The base install covers Airflow, dbt and Postgres. BigQuery and Snowflake need the optional `cloud` extra, installed from the same release wheel:
+The base install covers Airflow, dbt and Postgres. BigQuery and Snowflake need the optional `cloud` extra:
 
 ```bash
-pip install "pipelineprobe[cloud] @ https://github.com/willowvibe/pipelineprobe/releases/download/v0.3.0/pipelineprobe-0.3.0-py3-none-any.whl"
+pip install "pipelineprobe[cloud]"
 ```
 
-Python 3.11 or newer is required.
+Python 3.11 or newer is required. Every release also publishes a wheel and sdist on the [releases page](https://github.com/willowvibe/pipelineprobe/releases).
 
 ## Quickstart
 

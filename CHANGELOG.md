@@ -23,6 +23,8 @@ Versioning follows [Semantic Versioning](https://semver.org/).
   package covers Airflow, dbt and Postgres; configuring a BigQuery or Snowflake
   warehouse without the extra exits with an install hint instead of a
   traceback.
+- Published to PyPI as `pipelineprobe`, uploaded from the release workflow
+  through OIDC trusted publishing.
 
 #### v0.2.0 — New Orchestrator Connectors
 - **Prefect connector** (`pipelineprobe/connectors/prefect.py`) — connects to a
