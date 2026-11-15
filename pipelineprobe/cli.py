@@ -8,16 +8,16 @@ import httpx
 import typer
 
 from pipelineprobe import __version__
-from pipelineprobe.config import load_config, SUPPORTED_ORCHESTRATORS
+from pipelineprobe.config import SUPPORTED_ORCHESTRATORS, load_config
 from pipelineprobe.connectors.airflow import AirflowConnector
-from pipelineprobe.connectors.prefect import PrefectConnector
+from pipelineprobe.connectors.bigquery import BigQueryConnector
 from pipelineprobe.connectors.dagster import DagsterConnector
 from pipelineprobe.connectors.dbt import DbtConnector
 from pipelineprobe.connectors.postgres import PostgresConnector
-from pipelineprobe.connectors.bigquery import BigQueryConnector
+from pipelineprobe.connectors.prefect import PrefectConnector
 from pipelineprobe.connectors.snowflake import SnowflakeConnector
-from pipelineprobe.rules import get_configured_engine
 from pipelineprobe.renderer import ReportRenderer
+from pipelineprobe.rules import get_configured_engine
 
 logger = logging.getLogger(__name__)
 

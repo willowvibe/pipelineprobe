@@ -3,7 +3,7 @@
 > *Instant Data Pipeline Audit — Airflow · dbt · modern warehouses*
 
 [![CI](https://github.com/willowvibe/pipelineprobe/actions/workflows/ci.yml/badge.svg)](https://github.com/willowvibe/pipelineprobe/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/pypi/v/pipelineprobe.svg)](https://pypi.org/project/pipelineprobe/)
+[![GitHub release](https://img.shields.io/github/v/release/willowvibe/pipelineprobe)](https://github.com/willowvibe/pipelineprobe/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/)
 
@@ -28,8 +28,16 @@ Open-sourced by [WillowVibe](https://www.willowvibe.com).
 
 ### 1. Install
 
+Install the v0.3.0 release wheel:
+
 ```bash
-pip install pipelineprobe
+pip install https://github.com/willowvibe/pipelineprobe/releases/download/v0.3.0/pipelineprobe-0.3.0-py3-none-any.whl
+```
+
+Or install straight from the tagged source with [pipx](https://pipx.pypa.io/):
+
+```bash
+pipx install git+https://github.com/willowvibe/pipelineprobe@v0.3.0
 ```
 
 ### 2. Create a config file
@@ -219,8 +227,8 @@ PipelineProbe can automatically fail your CI pipeline when critical issues excee
 
 ## Roadmap
 
-- [ ] **v0.2.0** — Prefect and Dagster connectors
-- [ ] **v0.3.0** — Cost insights (scanned bytes for BigQuery / Snowflake)
+- [x] **v0.2.0** — Prefect and Dagster connectors
+- [x] **v0.3.0** — Cost insights (scanned bytes for BigQuery / Snowflake)
 - [ ] **v1.0.0** — Data lineage support
 
 ---

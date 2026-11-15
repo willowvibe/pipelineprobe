@@ -1,5 +1,5 @@
 import logging
-from typing import List, Callable, Any
+from typing import Any, Callable, List
 
 from pipelineprobe.models import Issue
 

@@ -1,12 +1,12 @@
 import json
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
-from pipelineprobe.config import WarehouseConfig, DbtConfig, AirflowConfig
-from pipelineprobe.connectors.postgres import PostgresConnector
-from pipelineprobe.connectors.dbt import DbtConnector
-from pipelineprobe.connectors.snowflake import SnowflakeConnector
-from pipelineprobe.connectors.bigquery import BigQueryConnector
+from pipelineprobe.config import AirflowConfig, DbtConfig, WarehouseConfig
 from pipelineprobe.connectors.airflow import AirflowConnector
+from pipelineprobe.connectors.bigquery import BigQueryConnector
+from pipelineprobe.connectors.dbt import DbtConnector
+from pipelineprobe.connectors.postgres import PostgresConnector
+from pipelineprobe.connectors.snowflake import SnowflakeConnector
 
 
 @patch("pipelineprobe.connectors.postgres.psycopg2.connect")

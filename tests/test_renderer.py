@@ -2,8 +2,8 @@ import json
 import logging
 from datetime import timedelta
 
-from pipelineprobe.renderer import ReportRenderer
 from pipelineprobe.models import Issue
+from pipelineprobe.renderer import ReportRenderer
 
 
 def test_render_html(tmp_path):

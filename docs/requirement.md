@@ -71,7 +71,7 @@ Existing observability tools either:
 ### 3.2 Primary User Flows
 
 **Flow A: Local Audit (Developer)**
-1. Install CLI: `pip install pipelineprobe`
+1. Install CLI: `pip install https://github.com/willowvibe/pipelineprobe/releases/download/v0.3.0/pipelineprobe-0.3.0-py3-none-any.whl`
 2. Configure via YAML or flags (Airflow URL, dbt path, warehouse DSN).
 3. Run:  
    ```bash
@@ -203,7 +203,7 @@ Warehouse +--------------+         +--------+--------+
 
 ### 6.4 Deployment
 
-- **CLI:** `pip install pipelineprobe`.
+- **CLI:** `pip install https://github.com/willowvibe/pipelineprobe/releases/download/v0.3.0/pipelineprobe-0.3.0-py3-none-any.whl`.
 - **Container:** Docker image with:
   - Python base
   - `pipelineprobe` installed

@@ -23,6 +23,7 @@ class ReportRenderer:
 
     def render_html(self, issues: list[Issue], summary: dict) -> Path:
         from datetime import datetime
+
         from pipelineprobe import __version__
 
         template = self.env.get_template("report.html")

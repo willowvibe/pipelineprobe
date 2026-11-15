@@ -1,4 +1,4 @@
-from pipelineprobe.config import load_config, PipelineProbeConfig
+from pipelineprobe.config import PipelineProbeConfig, load_config
 
 
 def test_load_config_defaults(tmp_path):

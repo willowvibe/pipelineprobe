@@ -1,16 +1,17 @@
 from datetime import datetime, timedelta
+
+from pipelineprobe.models import Dag, DagRun
 from pipelineprobe.rules.airflow_rules import (
+    check_high_failure_rate,
     check_missing_retries,
     check_missing_slas,
     check_stale_dags,
-    check_high_failure_rate,
 )
+from pipelineprobe.rules.dbt_rules import check_failing_models, check_missing_tests
 from pipelineprobe.rules.postgres_rules import (
     check_large_tables,
     check_missing_timestamps,
 )
-from pipelineprobe.rules.dbt_rules import check_failing_models, check_missing_tests
-from pipelineprobe.models import Dag, DagRun
 
 
 def test_check_missing_retries(mock_airflow_tasks):

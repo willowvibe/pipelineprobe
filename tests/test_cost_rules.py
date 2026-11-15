@@ -5,7 +5,6 @@ from pipelineprobe.rules.cost_rules import (
     check_snowflake_credit_spenders,
 )
 
-
 # ---------------------------------------------------------------------------
 # BigQuery cost rules
 # ---------------------------------------------------------------------------

@@ -62,4 +62,4 @@ This file tracks known issues, planned improvements, and the current state of ea
 
 ### Release Hygiene
 - [ ] Tag `v0.1.0` GitHub release.
-- [ ] Publish to PyPI so `pip install pipelineprobe` resolves to the correct package.
+- [ ] Publish tagged GitHub releases with installable wheels so the README install URL stays stable.

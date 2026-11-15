@@ -1,6 +1,7 @@
-from typing import List
 from datetime import datetime, timezone
-from pipelineprobe.models import Task, Issue, Dag
+from typing import List
+
+from pipelineprobe.models import Dag, Issue, Task
 
 
 def _severity(context: dict, rule_name: str, default: str) -> str:

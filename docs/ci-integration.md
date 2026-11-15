@@ -10,7 +10,7 @@ A ready-to-use workflow is available at [`examples/github-actions/pipelineprobe.
 
 ```yaml
       - name: Install PipelineProbe
-        run: pip install pipelineprobe
+        run: pip install https://github.com/willowvibe/pipelineprobe/releases/download/v0.3.0/pipelineprobe-0.3.0-py3-none-any.whl
 
       - name: Run PipelineProbe Audit
         env:
@@ -76,7 +76,7 @@ pipelineprobe:audit:
     PIPELINEPROBE_AIRFLOW_PASSWORD: $AIRFLOW_PASSWORD
     PIPELINEPROBE_WAREHOUSE_DSN: $WAREHOUSE_DSN
   script:
-    - pip install pipelineprobe
+    - pip install https://github.com/willowvibe/pipelineprobe/releases/download/v0.3.0/pipelineprobe-0.3.0-py3-none-any.whl
     - pipelineprobe audit --config pipelineprobe.yml --format both --fail-on-critical 5
   artifacts:
     when: always

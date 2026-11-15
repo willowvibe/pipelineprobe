@@ -9,14 +9,18 @@ on:
 jobs:
   test-and-lint:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
     steps:
-      - uses: actions/checkout@v3
-      
+      - uses: actions/checkout@v4
+
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-          
+          python-version: ${{ matrix.python-version }}
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -27,3 +31,33 @@ jobs:
 
       - name: Run tests
         run: pytest
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Build sdist and wheel
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build
+
+      - name: Install wheel in a clean venv
+        run: |
+          python -m venv /tmp/pipelineprobe-venv
+          /tmp/pipelineprobe-venv/bin/python -m pip install --upgrade pip
+          /tmp/pipelineprobe-venv/bin/pip install dist/*.whl
+          /tmp/pipelineprobe-venv/bin/pipelineprobe --version
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t pipelineprobe:test .

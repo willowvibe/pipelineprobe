@@ -6,11 +6,10 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from pipelineprobe.config import AirflowConfig, WarehouseConfig
-from pipelineprobe.connectors.prefect import PrefectConnector
-from pipelineprobe.connectors.dagster import DagsterConnector
 from pipelineprobe.connectors.bigquery import BigQueryConnector
+from pipelineprobe.connectors.dagster import DagsterConnector
+from pipelineprobe.connectors.prefect import PrefectConnector
 from pipelineprobe.connectors.snowflake import SnowflakeConnector
-
 
 # ---------------------------------------------------------------------------
 # Prefect connector

@@ -1,6 +1,8 @@
-import pytest
 from datetime import datetime, timedelta
-from pipelineprobe.models import Dag, DagRun, Task, DbtModel
+
+import pytest
+
+from pipelineprobe.models import Dag, DagRun, DbtModel, Task
 
 
 @pytest.fixture
