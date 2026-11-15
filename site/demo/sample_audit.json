@@ -1,0 +1,90 @@
+{
+  "summary": {
+    "score": 30,
+    "critical_count": 2,
+    "warning_count": 5,
+    "info_count": 0,
+    "total_issues": 7,
+    "dag_count": 8,
+    "score_formula": "score = 100 - min(90, 0.250 criticals/DAG \u00d7 200) - min(20, 0.625 warnings/DAG \u00d7 40)",
+    "metadata": {
+      "orchestrator_url": "http://airflow:8080",
+      "orchestrator_type": "airflow",
+      "warehouse_type": "postgres",
+      "dbt_target": "dev",
+      "cost_insights_enabled": false
+    }
+  },
+  "issues": [
+    {
+      "severity": "warning",
+      "category": "task",
+      "summary": "Task load_daily_sales in DAG daily_sales_pipeline has no retries configured.",
+      "details": "Tasks without retries are more prone to transient failures.",
+      "recommendation": "Configure at least 1-3 retries for the task.",
+      "affected_resources": [
+        "load_daily_sales"
+      ]
+    },
+    {
+      "severity": "warning",
+      "category": "task",
+      "summary": "Task sync_customers in DAG nightly_customer_sync has no retries configured.",
+      "details": "Tasks without retries are more prone to transient failures.",
+      "recommendation": "Configure at least 1-3 retries for the task.",
+      "affected_resources": [
+        "sync_customers"
+      ]
+    },
+    {
+      "severity": "critical",
+      "category": "dag",
+      "summary": "DAG nightly_customer_sync has a high failure rate (33%).",
+      "details": "2 out of the last 6 runs failed.",
+      "recommendation": "Investigate the root cause of the frequent failures.",
+      "affected_resources": [
+        "nightly_customer_sync"
+      ]
+    },
+    {
+      "severity": "warning",
+      "category": "dbt",
+      "summary": "dbt model 'customers' has no tests.",
+      "details": "Models without tests can introduce silent data quality issues.",
+      "recommendation": "Add at least unique and not_null tests for primary keys.",
+      "affected_resources": [
+        "customers"
+      ]
+    },
+    {
+      "severity": "critical",
+      "category": "dbt",
+      "summary": "dbt model 'customers' failed in the last run.",
+      "details": "Last run status: error",
+      "recommendation": "Investigate and fix the failing model or tests.",
+      "affected_resources": [
+        "customers"
+      ]
+    },
+    {
+      "severity": "warning",
+      "category": "warehouse",
+      "summary": "Table 'fact_orders' in schema 'analytics' is very large.",
+      "details": "Row count: 10000100.",
+      "recommendation": "Consider partitioning the table to improve query performance.",
+      "affected_resources": [
+        "fact_orders"
+      ]
+    },
+    {
+      "severity": "warning",
+      "category": "warehouse",
+      "summary": "Table 'stg_events' in schema 'raw' has no updated_at/created_at columns.",
+      "details": "Row count is 1200100 but no audit timestamps exist.",
+      "recommendation": "Add updated_at / created_at columns for incremental ingestion and auditing.",
+      "affected_resources": [
+        "stg_events"
+      ]
+    }
+  ]
+}
