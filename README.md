@@ -1,217 +1,99 @@
 # PipelineProbe
 
-> *Instant Data Pipeline Audit — Airflow · dbt · modern warehouses*
+A read-only audit of Airflow, dbt and your warehouse that produces one prioritized report in one command.
 
 [![CI](https://github.com/willowvibe/pipelineprobe/actions/workflows/ci.yml/badge.svg)](https://github.com/willowvibe/pipelineprobe/actions/workflows/ci.yml)
 [![GitHub release](https://img.shields.io/github/v/release/willowvibe/pipelineprobe)](https://github.com/willowvibe/pipelineprobe/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/)
 
-PipelineProbe is a **read-only, one-command audit tool** for data pipelines. It connects to your existing stack — Apache Airflow, dbt, and a modern warehouse — and produces a single actionable HTML or JSON report surfacing critical issues, missing SLAs, failing tests, high failure rates, and more.
+[![PipelineProbe demo](docs/assets/pipelineprobe-demo.gif)](https://github.com/willowvibe/pipelineprobe/releases/download/v0.3.0/pipelineprobe-demo.mp4)
 
-Open-sourced by [WillowVibe](https://www.willowvibe.com).
+A 90-second demo (the GIF above is a short preview) on synthetic sample data from the bundled quickstart stack. No client or production data.
 
----
+[Watch the full 90-second demo →](https://github.com/willowvibe/pipelineprobe/releases/download/v0.3.0/pipelineprobe-demo.mp4)
 
-## Features
+## What it does
 
 | Area | What it checks |
 |---|---|
-| **Airflow** | DAG failure rates, missing retries, missing SLAs, stale pipelines, alert configuration |
-| **dbt** | Models with zero tests, failing last runs |
-| **Warehouse** | Largest tables, tables missing audit timestamps (`created_at` / `updated_at`) |
-| **Report** | Health score (0–100), critical / warning / info counts, severity filter, HTML + JSON output |
+| **Airflow** | DAG failure rates, tasks with no retries, stale DAGs |
+| **dbt** | Models with zero tests, models whose last run failed |
+| **Warehouse** | Very large tables, tables missing `created_at` / `updated_at` |
+| **Report** | 0–100 health score, critical / warning / info counts, severity filter, HTML + JSON |
 
----
+PipelineProbe makes no SLA findings: Airflow 2.7.1 does not expose task SLA configuration through its API, so the audit deliberately makes no such claim.
 
-## Quick Start
+## Install
 
-### 1. Install
-
-Install the v0.3.0 release wheel:
+This release is installed from GitHub. The wheel is attached to the v0.3.0 release:
 
 ```bash
 pip install https://github.com/willowvibe/pipelineprobe/releases/download/v0.3.0/pipelineprobe-0.3.0-py3-none-any.whl
 ```
 
-Or install straight from the tagged source with [pipx](https://pipx.pypa.io/):
+Or install the tagged source with [pipx](https://pipx.pypa.io/):
 
 ```bash
 pipx install git+https://github.com/willowvibe/pipelineprobe@v0.3.0
 ```
 
-### 2. Create a config file
+The base install covers Airflow, dbt and Postgres. BigQuery and Snowflake need the optional `cloud` extra, installed from the same release wheel:
 
 ```bash
-pipelineprobe init
+pip install "pipelineprobe[cloud] @ https://github.com/willowvibe/pipelineprobe/releases/download/v0.3.0/pipelineprobe-0.3.0-py3-none-any.whl"
 ```
 
-This writes `pipelineprobe.yml` to the current directory with sensible defaults.
+Python 3.11 or newer is required.
 
-### 3. Run an audit
+## Quickstart
 
-```bash
-pipelineprobe audit --config pipelineprobe.yml
-```
-
-Reports are written to `./reports/` by default — open `pipelineprobe-report.html` in any browser.
-
-### 5-Minute Docker Quickstart
-
-Want to see it in action without a local stack?
+The bundled Docker stack runs a real audit against a local Airflow + dbt + Postgres setup. No cloud accounts or existing pipelines are needed.
 
 ```bash
 cd examples/quickstart
 docker compose up --build
 ```
 
-See [examples/quickstart/README.md](examples/quickstart/README.md) for details.
+The first run takes roughly 5–10 minutes (image pulls, build and Airflow startup). The stack runs 8 demo DAGs, and the audit writes real HTML and JSON reports to `examples/quickstart/reports/`. See [examples/quickstart/README.md](examples/quickstart/README.md) for prerequisites, credentials and cleanup.
 
----
+## What the report shows
 
-## Configuration
+![PipelineProbe HTML report](docs/report-screenshot.png)
 
-A minimal `pipelineprobe.yml`:
+- The sample audit scores **30/100** with **2 critical** issues and **5 warnings**.
+- Top actions are ordered by severity; each names the exact resource and the recommended fix.
+- The severity filter narrows the findings to all, critical, warning or info.
 
-```yaml
-orchestrator:
-  base_url: "http://localhost:8080"
-  username: "admin"
-  # password via env: PIPELINEPROBE_AIRFLOW_PASSWORD
+The same report is committed at [site/report/index.html](site/report/index.html) — download it and open it in a browser to click through the filters.
 
-dbt:
-  project_dir: "./analytics"
-  manifest_path: "target/manifest.json"
-  run_results_path: "target/run_results.json"
+## CI gate and diff
 
-warehouse:
-  type: postgres         # postgres | bigquery | snowflake
-  dsn: "postgresql://user:pass@localhost:5432/analytics"
-
-report:
-  output_dir: "./reports"
-  format: "html"          # html | json | both
-  fail_on_critical: 5
-```
-
-See [docs/configuration.md](docs/configuration.md) for the full reference including BigQuery, Snowflake, and all rule-level options.
-
----
-
-## CLI Reference
-
-### Commands
-
-| Command | Description |
-|---|---|
-| `pipelineprobe init` | Write a default `pipelineprobe.yml` to the current directory |
-| `pipelineprobe audit` | Run the full audit and generate reports |
-| `pipelineprobe doctor` | Validate connectivity to Airflow, dbt, and the warehouse before auditing |
-| `pipelineprobe diff <a.json> <b.json>` | Compare two JSON reports and surface regressions / improvements |
-
-### `audit` flags
-
-| Flag | Default | Description |
-|---|---|---|
-| `--config FILE` | `pipelineprobe.yml` | Path to config YAML |
-| `--format FORMAT` | from config | Override output format: `html`, `json`, or `both` |
-| `--fail-on-critical N` | from config | Override critical issue threshold for non-zero exit |
-| `--version` | — | Print version and exit |
-
-### Exit codes
-
-| Code | Meaning |
-|---|---|
-| `0` | Audit completed; critical count at or below threshold |
-| `1` | Critical issue count exceeds `fail_on_critical`, or a config / connectivity error occurred |
-
-### Examples
+Gate a build on critical findings:
 
 ```bash
-# Basic local audit
-pipelineprobe audit
-
-# CI strict mode: fail if even one critical issue is found
-pipelineprobe audit --format both --fail-on-critical 0
-
-# Compare today's report against yesterday's baseline
-pipelineprobe diff reports/baseline.json reports/report.json
-
-# Check connectivity without running the full audit
-pipelineprobe doctor --config staging.yml
-
-# Print version
-pipelineprobe --version
+pipelineprobe audit --fail-on-critical 1
 ```
 
----
+This exits non-zero when the critical issue count exceeds the threshold. Use `--fail-on-critical 0` to fail on any critical issue.
 
-## Supported Integrations
-
-| Connector | Status |
-|---|---|
-| Apache Airflow (REST API ≥ 2.0) | Supported |
-| dbt Core (manifest + run_results) | Supported |
-| PostgreSQL | Supported |
-| BigQuery | Supported |
-| Snowflake | Supported |
-
----
-
-## Standard Workflows
-
-### 1. Local Audit
-
-Identify issues before they reach production. Run `pipelineprobe audit` on a dev machine or before merging infrastructure changes.
+Detect regressions between two JSON reports:
 
 ```bash
-pipelineprobe init
-# edit pipelineprobe.yml with your Airflow URL, dbt paths, and warehouse DSN
-pipelineprobe audit --format html
-# open ./reports/pipelineprobe-report.html
+pipelineprobe diff baseline.json report.json
 ```
 
-### 2. CI Quality Gate
+`diff` exits `1` on regressions. See [docs/ci-integration.md](docs/ci-integration.md) for GitHub Actions and GitLab CI examples.
 
-Fail your build when critical issues surface. Use `--fail-on-critical 0` for zero-tolerance enforcement. See [docs/ci-integration.md](docs/ci-integration.md).
+## Who this is for
 
-```bash
-pipelineprobe audit --format both --fail-on-critical 0
-```
+- Data engineers and team leads inheriting a pipeline they did not build.
+- Consultants who need a shareable audit artefact in an hour.
+- Anyone adding a pipeline health gate to CI.
 
-### 3. Regression Detection with `diff`
+## Need this run against your stack?
 
-Compare successive audit reports to catch new issues introduced between runs:
-
-```bash
-pipelineprobe audit --format json     # generates report.json
-# ... later / next CI run ...
-pipelineprobe diff reports/baseline.json reports/report.json
-# exits 1 if regressions found
-```
-
-### 4. Consulting / One-off Audits
-
-Connect to a client's stack, run the audit, and deliver the polished HTML report as a professional-grade artefact.
-
----
-
-## How PipelineProbe Differs from Other Tools
-
-| Feature | Monitoring (Datadog, Monte Carlo) | Quality Libraries (Soda, Great Expectations) | **PipelineProbe** |
-|---|---|---|---|
-| **Focus** | Continuous alerting & dashboards | Row-level data validation | Infrastructure & config audit |
-| **Effort to start** | High — install agents, configure SDKs | Medium — write YAML expectations | **Zero — read-only, no agents** |
-| **Output** | Dashboards, alerts | Pass / fail per expectation | **Single HTML / JSON report** |
-| **Best for** | On-call engineers | Data engineers | **Consultants · Team leads · CI gates** |
-
----
-
-## CI/CD Integration
-
-PipelineProbe can automatically fail your CI pipeline when critical issues exceed your threshold. See [docs/ci-integration.md](docs/ci-integration.md) for ready-to-use GitHub Actions and GitLab CI configs.
-
----
+WillowVibe runs one-off PipelineProbe audits: point it at your Airflow, dbt and warehouse, get a prioritized report, and walk through the top actions together. See [willowvibe.com](https://www.willowvibe.com).
 
 ## Documentation
 
@@ -223,19 +105,15 @@ PipelineProbe can automatically fail your CI pipeline when critical issues excee
 | [Contributing](CONTRIBUTING.md) | Development setup, testing, adding rules and connectors |
 | [Changelog](CHANGELOG.md) | Release history |
 
----
-
 ## Roadmap
 
 - [x] **v0.2.0** — Prefect and Dagster connectors
-- [x] **v0.3.0** — Cost insights (scanned bytes for BigQuery / Snowflake)
+- [x] **v0.3.0** — Cost insights for BigQuery and Snowflake
 - [ ] **v1.0.0** — Data lineage support
 
----
+## Sample data
 
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) to get started. All contributions are welcome — bug reports, docs, new rules, new connectors.
+The public demo and its report are generated by the bundled quickstart stack. No client or production data is published.
 
 ## License
 
