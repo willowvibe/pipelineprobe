@@ -97,3 +97,22 @@ done-when: `uv run --project . --extra dev ruff check .` and `uv run --project .
 
 difficulty: medium
 kind: change
+
+## Deviations recorded during execution
+
+- **Step 4 (sample report): no `info` finding.** The plan asked the fixture to
+  carry one info-level finding. No rule in the audit produces one against the
+  quickstart stack, and inventing a finding would have made the sample report
+  a fabrication. The pinned fixture is 2 critical / 5 warning / 0 info,
+  score 30, and `tests/test_demo_report.py` pins those exact counts.
+- **Step 6 (README): no live URLs.** GitHub Pages is not enabled for the
+  organisation's token, so `willowvibe.github.io/pipelineprobe` does not exist
+  and the deploy workflow is manual-dispatch only. The README therefore links
+  the demo GIF to the release MP4, points at `site/report/index.html` as a
+  downloadable file, and makes no hosted-page claim. The demo narration was
+  re-recorded for the same reason: it no longer says "open the live sample
+  report".
+- **PyPI moved into scope.** The release gains a `publish-pypi` job using OIDC
+  trusted publishing, and the cloud SDKs moved behind a `cloud` extra so the
+  default install stays lean. PyPI claims land in the README only in a
+  follow-up change made after the first upload succeeds.
