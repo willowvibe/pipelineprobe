@@ -43,7 +43,6 @@
         "full_refresh": null,
         "unique_key": null,
         "on_schema_change": "ignore",
-        "on_configuration_change": "apply",
         "grants": {},
         "packages": [],
         "docs": {"show": true, "node_color": null},
@@ -100,8 +99,6 @@
       "constraints": [],
       "version": null,
       "latest_version": null,
-      "deprecation_date": null,
-      "defer_relation": null,
       "primary_key": ["order_id"]
     },
     "model.quickstart.customers": {
@@ -135,7 +132,6 @@
         "full_refresh": null,
         "unique_key": null,
         "on_schema_change": "ignore",
-        "on_configuration_change": "apply",
         "grants": {},
         "packages": [],
         "docs": {"show": true, "node_color": null},
@@ -174,8 +170,6 @@
       "constraints": [],
       "version": null,
       "latest_version": null,
-      "deprecation_date": null,
-      "defer_relation": null,
       "primary_key": ["customer_id"]
     },
     "test.quickstart.unique_orders_order_id": {

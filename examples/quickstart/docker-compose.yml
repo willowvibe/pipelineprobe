@@ -34,13 +34,19 @@ services:
     volumes:
       # Creates the `warehouse` database and demo tables on first start.
       - ./init-warehouse.sql:/docker-entrypoint-initdb.d/01-warehouse.sql:ro
+      # Named volume keeps the seeded warehouse across `docker compose down`
+      # (only `down -v` deletes it).
+      - postgres-db-volume:/var/lib/postgresql/data
     healthcheck:
       # Force TCP so the check only passes once the real server is listening
       # (the temporary server used for init scripts only listens on a socket).
+      # Seeding just over 11M rows can take a while on a slow disk, hence the
+      # generous start period and retry budget.
       test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U airflow -d airflow"]
       interval: 5s
       timeout: 5s
-      retries: 20
+      retries: 30
+      start_period: 120s
 
   airflow-init:
     <<: *airflow-common
@@ -86,7 +92,13 @@ services:
     build:
       context: ../..
     volumes:
-      - .:/app/quickstart
+      # Only the files the audit reads are mounted, and read-only.  The DAGs
+      # and this compose file are not needed inside this container.
+      - ./pipelineprobe.yml:/app/quickstart/pipelineprobe.yml:ro
+      - ./run-audit.sh:/app/quickstart/run-audit.sh:ro
+      - ./dbt_project:/app/quickstart/dbt_project:ro
+      # Reports are the one thing this container writes.
+      - ./reports:/app/quickstart/reports
     entrypoint: ["/bin/bash", "/app/quickstart/run-audit.sh"]
     environment:
       AIRFLOW_URL: http://airflow:8080
@@ -97,3 +109,6 @@ services:
       airflow:
         condition: service_healthy
     restart: "no"
+
+volumes:
+  postgres-db-volume:

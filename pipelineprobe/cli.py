@@ -246,6 +246,11 @@ def audit(
         json_path = renderer.render_json(issues, summary)
         typer.echo(f"JSON report generated at: {json_path}")
 
+    typer.echo(
+        f"Health score: {score}/100 — {critical_count} critical, "
+        f"{warning_count} warning, {info_count} info"
+    )
+
     if critical_count > cfg.report.fail_on_critical:
         typer.secho(
             f"Audit failed! Found {critical_count} critical issues (threshold: {cfg.report.fail_on_critical}).",

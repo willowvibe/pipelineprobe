@@ -11,6 +11,19 @@
 
 set -euo pipefail
 
+# Fail fast if the reports directory is not writable.  The audit runs at the
+# end of this script, so a permissions problem would otherwise only surface
+# after several minutes of waiting and seeding.
+REPORT_DIR="/app/quickstart/reports"
+if ! mkdir -p "$REPORT_DIR" 2>/dev/null \
+    || ! PROBE_FILE="$(mktemp "$REPORT_DIR/.write-probe.XXXXXX" 2>/dev/null)"; then
+    echo "ERROR: cannot write to ${REPORT_DIR} as uid $(id -u)." >&2
+    echo "       examples/quickstart/reports must be writable by the container's" >&2
+    echo "       uid, or the ./reports bind mount in docker-compose.yml must be fixed." >&2
+    exit 1
+fi
+rm -f "$PROBE_FILE"
+
 AIRFLOW_URL="${AIRFLOW_URL:-http://airflow:8080}"
 AIRFLOW_USER="${AIRFLOW_USER:-admin}"
 AIRFLOW_PASSWORD="${AIRFLOW_PASSWORD:-admin}"
@@ -25,6 +38,7 @@ import base64
 import json
 import sys
 import time
+import urllib.error
 import urllib.request
 
 base_url = sys.argv[1].rstrip("/")
@@ -78,6 +92,26 @@ while time.time() < deadline:
 
     try:
         dag_ids = registered_dag_ids()
+    except urllib.error.HTTPError as exc:
+        # Authentication problems will never fix themselves; surface them now
+        # instead of retrying until the overall timeout expires.
+        if exc.code in (401, 403):
+            print(
+                f"ERROR: Airflow rejected the API credentials (HTTP {exc.code}).\n"
+                "       Check AIRFLOW_USER / AIRFLOW_PASSWORD and the Airflow user\n"
+                "       created by airflow-init.",
+                file=sys.stderr,
+            )
+            raise SystemExit(1)
+        if time.time() - last_progress >= 10:
+            print(
+                "    Airflow is healthy but its API is not ready yet "
+                f"(HTTP {exc.code}); retrying...",
+                flush=True,
+            )
+            last_progress = time.time()
+        time.sleep(3)
+        continue
     except Exception as exc:
         if time.time() - last_progress >= 10:
             print(
@@ -183,6 +217,23 @@ for dag_id, run_count in RUN_PLAN.items():
             )
         except urllib.error.HTTPError as exc:
             if exc.code != 409:
+                raise
+            # A 409 can mean either an idempotent re-run of this exact run id
+            # or a logical_date collision with a different run id.  Only the
+            # former is safe to reuse.
+            conflict_body = exc.read().decode(errors="replace")
+            try:
+                request("GET", f"/api/v1/dags/{dag_id}/dagRuns/{run_id}")
+            except urllib.error.HTTPError as get_exc:
+                if get_exc.code == 404:
+                    print(
+                        f"ERROR: cannot create {dag_id}/{run_id}: Airflow returned\n"
+                        "       HTTP 409, but that run id does not exist. Its\n"
+                        "       logical_date collides with a different run id.\n"
+                        f"       Original 409 response: {conflict_body}",
+                        file=sys.stderr,
+                    )
+                    raise SystemExit(1)
                 raise
             print(f"    {dag_id}/{run_id} already exists; reusing it.", flush=True)
         seeded.append((dag_id, run_id))

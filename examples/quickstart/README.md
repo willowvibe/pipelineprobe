@@ -33,7 +33,8 @@ it exits with code 0, the audit is finished. The Airflow service keeps running
 so you can browse the UI; press `Ctrl+C` and run `docker compose down` when you
 are done.
 
-On systems with the legacy binary, `docker-compose up --build` works the same.
+On systems that only provide the `docker-compose` v2 shim,
+`docker-compose up --build` works the same.
 
 ### Expected runtime
 
@@ -99,21 +100,27 @@ network.
 ## Reset and clean up
 
 ```bash
-docker compose down       # stop the stack, keep the seeded volume
+docker compose down       # stop the stack, keep the seeded postgres-db-volume
 docker compose down -v    # stop and delete the database volume
 ```
 
-With `-v`, the next `docker compose up` re-initialises Postgres and re-seeds the
-warehouse.
+The seeded warehouse lives in the named volume `postgres-db-volume`, so
+`docker compose down` keeps it and the next `up` reuses the existing data.
+With `-v`, the volume is deleted; the next `docker compose up` re-initialises
+Postgres and re-seeds the warehouse. You must use `down -v` after editing
+`init-warehouse.sql`, because its init scripts only run on an empty data
+directory.
 
 ## Troubleshooting
 
 - If the `pipelineprobe` service times out waiting for Airflow, inspect
   `docker compose logs airflow airflow-init`; the eight demo DAGs must parse
   without import errors.
-- If report files do not appear, check `docker compose logs pipelineprobe`; the
-  container runs as an unprivileged user and needs write access to
-  `examples/quickstart/reports/`.
+- If report files do not appear, check `docker compose logs pipelineprobe`.
+  `reports/` is shipped with the checkout (kept by `.gitkeep`) and must be
+  writable by the container's uid 1000. `run-audit.sh` probes the directory
+  before doing any waiting, so a permissions problem fails fast with an
+  actionable message instead of surfacing at the end of the audit.
 - To re-run only the audit without recreating the stack:
 
   ```bash

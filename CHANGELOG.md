@@ -47,6 +47,9 @@ Versioning follows [Semantic Versioning](https://semver.org/).
   `include_cost_section: true` is set.
 
 #### General
+- `pipelineprobe audit` now prints a one-line health summary
+  (`Health score: N/100 — X critical, Y warning, Z info`) before the
+  fail-threshold check.
 - `SUPPORTED_ORCHESTRATORS` constant exported from `pipelineprobe.config` for
   validation use in the CLI.
 - `init` command now generates a config template documenting all new fields.

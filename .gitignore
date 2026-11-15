@@ -162,7 +162,9 @@ cython_debug/
 .DS_Store
 
 # PipelineProbe specific
-reports/
+/reports/
+examples/quickstart/reports/*
+!examples/quickstart/reports/.gitkeep
 /pipelineprobe.yml
 uv.lock
 video-work/
