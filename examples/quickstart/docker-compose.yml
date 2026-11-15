@@ -1,41 +1,99 @@
-version: '3.8'
+# Deterministic demo stack for PipelineProbe.
+#
+#   docker compose up --build        (or: docker-compose up --build)
+#
+# Postgres 13 holds both the Airflow metadata database and a `warehouse`
+# database seeded by init-warehouse.sql.  Airflow 2.7.1 runs standalone with
+# the eight demo DAGs mounted from ./dags.  A one-shot PipelineProbe container
+# waits for Airflow, seeds a known run history, then audits the stack and
+# writes reports to ./reports.
+
+x-airflow-common: &airflow-common
+  image: apache/airflow:2.7.1
+  environment: &airflow-common-env
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+    # Fixed key keeps encrypted metadata stable across container restarts.
+    AIRFLOW__CORE__FERNET_KEY: "81HqDtbqAywKSOumSha3BhWNOdQ26slT6K0YaZeZyPs="
+    AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "False"
+    AIRFLOW__API__AUTH_BACKENDS: "airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session"
+  volumes:
+    - ./dags:/opt/airflow/dags:ro
+  depends_on:
+    postgres:
+      condition: service_healthy
 
 services:
   postgres:
     image: postgres:13
     environment:
-      - POSTGRES_USER=airflow
-      - POSTGRES_PASSWORD=airflow
-      - POSTGRES_DB=airflow
-    ports:
-      - "5432:5432"
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      # Creates the `warehouse` database and demo tables on first start.
+      - ./init-warehouse.sql:/docker-entrypoint-initdb.d/01-warehouse.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U airflow"]
+      # Force TCP so the check only passes once the real server is listening
+      # (the temporary server used for init scripts only listens on a socket).
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U airflow -d airflow"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 20
+
+  airflow-init:
+    <<: *airflow-common
+    command:
+      - bash
+      - -c
+      - |
+        set -euo pipefail
+        airflow db init
+        if airflow users list --output plain 2>/dev/null | awk '{print $2}' | grep -qx admin; then
+          echo "airflow-init: user 'admin' already exists, reusing it."
+        else
+          airflow users create \
+            --username admin \
+            --password admin \
+            --firstname Airflow \
+            --lastname Admin \
+            --role Admin \
+            --email admin@example.com
+          echo "airflow-init: created user 'admin'."
+        fi
+    restart: "no"
 
   airflow:
-    image: apache/airflow:2.7.1
-    environment:
-      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
-      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
-      - AIRFLOW__CORE__LOAD_EXAMPLES=True
-      - AIRFLOW__API__AUTH_BACKENDS=airflow.api.auth.backend.basic_auth
+    <<: *airflow-common
+    command: standalone
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
     depends_on:
       postgres:
         condition: service_healthy
-    ports:
-      - "8080:8080"
-    command: standalone
+      airflow-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
 
   pipelineprobe:
-    build: ../../
+    build:
+      context: ../..
     volumes:
       - .:/app/quickstart
+    entrypoint: ["/bin/bash", "/app/quickstart/run-audit.sh"]
     environment:
-      - PIPELINEPROBE_AIRFLOW_PASSWORD=admin
+      AIRFLOW_URL: http://airflow:8080
+      AIRFLOW_USER: admin
+      AIRFLOW_PASSWORD: admin
+      PIPELINEPROBE_CONFIG: /app/quickstart/pipelineprobe.yml
     depends_on:
       airflow:
-        condition: service_started
-    command: audit --config /app/quickstart/pipelineprobe.yml --format both
+        condition: service_healthy
+    restart: "no"

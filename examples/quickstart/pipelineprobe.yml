@@ -1,0 +1,27 @@
+# PipelineProbe configuration for the quickstart Docker stack.
+# Service names (airflow, postgres) resolve on the compose network.
+
+orchestrator:
+  type: airflow
+  base_url: http://airflow:8080
+  username: admin
+  password: admin
+
+dbt:
+  project_dir: /app/quickstart/dbt_project
+  target: dev
+  manifest_path: /app/quickstart/dbt_project/target/manifest.json
+  run_results_path: /app/quickstart/dbt_project/target/run_results.json
+
+warehouse:
+  type: postgres
+  dsn: postgresql://airflow:airflow@postgres:5432/warehouse
+
+report:
+  output_dir: /app/quickstart/reports
+  format: both
+  include_cost_section: false
+  fail_on_critical: 10
+
+rules:
+  stale_threshold_days: 7
