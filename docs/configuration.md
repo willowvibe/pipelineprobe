@@ -74,7 +74,13 @@ rules:
 
 The `type` field selects which connector is used. Each warehouse type has its own set of required fields.
 
-> **Note** — BigQuery and Snowflake support require the optional `cloud` extra, installed from the same release wheel as the base package (`pipelineprobe[cloud] @ <wheel-url>`). PostgreSQL works with the base install.
+> **Note** — BigQuery and Snowflake support require the optional `cloud` extra, installed from the same release wheel as the base package:
+>
+> ```bash
+> pip install "pipelineprobe[cloud] @ https://github.com/willowvibe/pipelineprobe/releases/download/v0.3.0/pipelineprobe-0.3.0-py3-none-any.whl"
+> ```
+>
+> PostgreSQL works with the base install.
 >
 > **Docker** — The image installs the base package by default; build with `docker build --build-arg PIP_EXTRAS="[cloud]" -t pipelineprobe:cloud .` to include the cloud SDKs.
 
