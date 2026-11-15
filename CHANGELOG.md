@@ -11,6 +11,19 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+#### v0.3.0 — Quickstart, sample report, and install shape
+- **Docker quickstart** (`examples/quickstart/`) — a real Airflow 2.7.1, dbt and
+  Postgres stack with 8 seeded DAGs and deterministic failures;
+  `docker compose up --build` writes HTML and JSON reports with no cloud
+  accounts or existing pipelines required.
+- **Sample report** (`site/report/index.html`) — the quickstart audit committed
+  as one self-contained HTML file with working severity filters.
+- **Optional `cloud` extra** — `google-cloud-bigquery` and
+  `snowflake-connector-python` moved out of the default install. The base
+  package covers Airflow, dbt and Postgres; configuring a BigQuery or Snowflake
+  warehouse without the extra exits with an install hint instead of a
+  traceback.
+
 #### v0.2.0 — New Orchestrator Connectors
 - **Prefect connector** (`pipelineprobe/connectors/prefect.py`) — connects to a
   Prefect 2/3 Server or Cloud workspace via the Prefect REST API.  Maps flows
