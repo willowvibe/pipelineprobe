@@ -14,7 +14,7 @@ stack starts, and the dbt artifacts are checked-in fixtures.
 | `pipelineprobe` | One-shot container. Waits for Airflow, seeds a deterministic DAG run history, then audits the stack and writes the reports. |
 
 The dbt project under `dbt_project/` is a recorded fixture: the audit reads
-`dbt_project/target/manifest.json` and `run_results.json`, which describe two
+`dbt_project/target/manifest.json` and `run_results.json`, which describe three
 models and their last run. No `dbt` command is executed by the stack.
 
 ## Run it
@@ -78,7 +78,8 @@ contains, qualitatively:
   which trips the high-failure-rate rule as a critical issue.
 - **dbt** — `customers` has no tests (warning) and its last recorded run ended
   in `error` (critical). `orders` has two passing tests and succeeded, so it
-  produces no dbt findings.
+  produces no dbt findings. `stg_payments` has a passing test and succeeded,
+  but has no description (info).
 - **Warehouse** — `analytics.fact_orders` has just over 10 million rows
   (warning: very large table). `raw.stg_events` has just over 1.2 million rows
   and no `created_at` / `updated_at` columns (warning: missing audit
