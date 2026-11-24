@@ -172,6 +172,77 @@
       "latest_version": null,
       "primary_key": ["customer_id"]
     },
+    "model.quickstart.stg_payments": {
+      "database": "warehouse",
+      "schema": "analytics",
+      "name": "stg_payments",
+      "resource_type": "model",
+      "package_name": "quickstart",
+      "path": "staging/stg_payments.sql",
+      "original_file_path": "models/staging/stg_payments.sql",
+      "unique_id": "model.quickstart.stg_payments",
+      "fqn": ["quickstart", "staging", "stg_payments"],
+      "alias": "stg_payments",
+      "checksum": {
+        "name": "sha256",
+        "checksum": "3f0c2b7a5e9d4816c2f5e8b1a7d4c0e9f6b3a8d5c2e7f1a4b9d6c3e0f7a2b5c8"
+      },
+      "config": {
+        "enabled": true,
+        "alias": null,
+        "schema": null,
+        "database": null,
+        "tags": ["quickstart"],
+        "meta": {},
+        "group": null,
+        "materialized": "table",
+        "incremental_strategy": null,
+        "persist_docs": {},
+        "quoting": {},
+        "column_types": {},
+        "full_refresh": null,
+        "unique_key": null,
+        "on_schema_change": "ignore",
+        "grants": {},
+        "packages": [],
+        "docs": {"show": true, "node_color": null},
+        "contract": {"enforced": false, "alias_types": true},
+        "access": "protected"
+      },
+      "tags": [],
+      "description": "",
+      "columns": {
+        "payment_id": {
+          "name": "payment_id",
+          "description": "",
+          "meta": {},
+          "data_type": null,
+          "constraints": [],
+          "quote": null,
+          "tags": []
+        }
+      },
+      "meta": {},
+      "group": null,
+      "docs": {"show": true, "node_color": null},
+      "patch_path": null,
+      "build_path": null,
+      "unrendered_config": {"materialized": "table", "tags": ["quickstart"]},
+      "relation_name": "\"warehouse\".\"analytics\".\"stg_payments\"",
+      "raw_code": "select\n    payment_id,\n    order_id,\n    amount,\n    payment_method,\n    created_at\nfrom analytics.stg_payments",
+      "language": "sql",
+      "refs": [],
+      "sources": [],
+      "metrics": [],
+      "depends_on": {"macros": [], "nodes": []},
+      "compiled_path": null,
+      "contract": {"enforced": false, "checksum": null},
+      "access": "protected",
+      "constraints": [],
+      "version": null,
+      "latest_version": null,
+      "primary_key": ["payment_id"]
+    },
     "test.quickstart.unique_orders_order_id": {
       "database": "warehouse",
       "schema": "dbt_test__audit",
@@ -285,6 +356,63 @@
         "namespace": null
       },
       "column_name": "order_id"
+    },
+    "test.quickstart.not_null_stg_payments_payment_id": {
+      "database": "warehouse",
+      "schema": "dbt_test__audit",
+      "name": "not_null_stg_payments_payment_id",
+      "resource_type": "test",
+      "package_name": "quickstart",
+      "path": "not_null_stg_payments_payment_id.sql",
+      "original_file_path": "models/staging/schema.yml",
+      "unique_id": "test.quickstart.not_null_stg_payments_payment_id",
+      "fqn": ["quickstart", "staging", "not_null_stg_payments_payment_id"],
+      "alias": "not_null_stg_payments_payment_id",
+      "checksum": {
+        "name": "none",
+        "checksum": ""
+      },
+      "config": {
+        "enabled": true,
+        "alias": null,
+        "schema": "dbt_test__audit",
+        "database": null,
+        "tags": ["quickstart"],
+        "meta": {},
+        "group": null,
+        "materialized": "test",
+        "severity": "ERROR",
+        "store_failures": null,
+        "where": null,
+        "limit": null,
+        "fail_calc": "count(*)",
+        "warn_if": "!= 0",
+        "error_if": "!= 0"
+      },
+      "tags": ["quickstart"],
+      "description": "",
+      "columns": {},
+      "meta": {},
+      "group": null,
+      "docs": {"show": true, "node_color": null},
+      "patch_path": null,
+      "build_path": null,
+      "unrendered_config": {"materialized": "test", "severity": "ERROR"},
+      "relation_name": null,
+      "raw_code": "{{ test_not_null(column_name=\"payment_id\") }}",
+      "language": "sql",
+      "refs": [["stg_payments"]],
+      "sources": [],
+      "metrics": [],
+      "depends_on": {"macros": [], "nodes": ["model.quickstart.stg_payments"]},
+      "compiled_path": null,
+      "contract": {"enforced": false, "checksum": null},
+      "test_metadata": {
+        "name": "not_null",
+        "kwargs": {"column_name": "payment_id"},
+        "namespace": null
+      },
+      "column_name": "payment_id"
     }
   },
   "sources": {},
@@ -297,7 +425,11 @@
   "parent_map": {
     "model.quickstart.customers": [],
     "model.quickstart.orders": [],
+    "model.quickstart.stg_payments": [],
     "test.quickstart.not_null_orders_order_id": ["model.quickstart.orders"],
+    "test.quickstart.not_null_stg_payments_payment_id": [
+      "model.quickstart.stg_payments"
+    ],
     "test.quickstart.unique_orders_order_id": ["model.quickstart.orders"]
   },
   "child_map": {
@@ -306,7 +438,11 @@
       "test.quickstart.not_null_orders_order_id",
       "test.quickstart.unique_orders_order_id"
     ],
+    "model.quickstart.stg_payments": [
+      "test.quickstart.not_null_stg_payments_payment_id"
+    ],
     "test.quickstart.not_null_orders_order_id": [],
+    "test.quickstart.not_null_stg_payments_payment_id": [],
     "test.quickstart.unique_orders_order_id": []
   },
   "group_map": {}

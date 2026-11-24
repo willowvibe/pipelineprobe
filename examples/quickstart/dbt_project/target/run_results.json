@@ -117,6 +117,62 @@
       "compiled": true,
       "compiled_code": "select\n    customer_id,\n    min(order_date) as first_order_date,\n    max(order_date) as most_recent_order_date,\n    count(*) as number_of_orders\nfrom analytics.fact_orders\ngroup by customer_id",
       "relation_name": null
+    },
+    {
+      "status": "success",
+      "timing": [
+        {
+          "name": "compile",
+          "started_at": "2026-11-15T09:02:31.100000Z",
+          "completed_at": "2026-11-15T09:02:31.640000Z"
+        },
+        {
+          "name": "execute",
+          "started_at": "2026-11-15T09:02:31.650000Z",
+          "completed_at": "2026-11-15T09:02:42.980000Z"
+        }
+      ],
+      "thread_id": "Thread-2",
+      "execution_time": 11.33,
+      "adapter_response": {
+        "_message": "CREATE TABLE",
+        "code": "CREATE TABLE",
+        "rows_affected": -1
+      },
+      "message": "CREATE TABLE",
+      "failures": null,
+      "unique_id": "model.quickstart.stg_payments",
+      "compiled": true,
+      "compiled_code": "select\n    payment_id,\n    order_id,\n    amount,\n    payment_method,\n    created_at\nfrom analytics.stg_payments",
+      "relation_name": "\"warehouse\".\"analytics\".\"stg_payments\""
+    },
+    {
+      "status": "pass",
+      "timing": [
+        {
+          "name": "compile",
+          "started_at": "2026-11-15T09:02:43.100000Z",
+          "completed_at": "2026-11-15T09:02:43.220000Z"
+        },
+        {
+          "name": "execute",
+          "started_at": "2026-11-15T09:02:43.230000Z",
+          "completed_at": "2026-11-15T09:02:49.540000Z"
+        }
+      ],
+      "thread_id": "Thread-3",
+      "execution_time": 6.31,
+      "adapter_response": {
+        "_message": "SELECT 0",
+        "code": "SELECT",
+        "rows_affected": 0
+      },
+      "message": "PASS",
+      "failures": 0,
+      "unique_id": "test.quickstart.not_null_stg_payments_payment_id",
+      "compiled": true,
+      "compiled_code": "select count(*) as validation_errors\nfrom analytics.stg_payments\nwhere payment_id is null",
+      "relation_name": null
     }
   ],
   "elapsed_time": 86.87,
