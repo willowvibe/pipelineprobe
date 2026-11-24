@@ -52,6 +52,9 @@ class DbtConnector:
                         tests_count=tests_count.get(unique_id, 0),
                         last_run_status=run_results.get(unique_id, "unknown"),
                         tags=node.get("tags", []),
+                        # dbt writes "" for undocumented models; guard against
+                        # an explicit null from hand-edited manifests.
+                        description=node.get("description") or "",
                     )
                 )
         return models

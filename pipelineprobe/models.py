@@ -33,6 +33,7 @@ class DbtModel(BaseModel):
     tests_count: int
     last_run_status: str
     tags: list[str]
+    description: str = ""
 
 
 class Issue(BaseModel):

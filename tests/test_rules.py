@@ -7,7 +7,11 @@ from pipelineprobe.rules.airflow_rules import (
     check_missing_slas,
     check_stale_dags,
 )
-from pipelineprobe.rules.dbt_rules import check_failing_models, check_missing_tests
+from pipelineprobe.rules.dbt_rules import (
+    check_failing_models,
+    check_missing_descriptions,
+    check_missing_tests,
+)
 from pipelineprobe.rules.postgres_rules import (
     check_large_tables,
     check_missing_timestamps,
@@ -179,6 +183,48 @@ def test_check_missing_tests(mock_dbt_models):
     issues = check_missing_tests({"dbt_models": mock_dbt_models})
     assert len(issues) == 1
     assert "model_with_no_tests" in issues[0].affected_resources
+
+
+def test_check_missing_descriptions():
+    from pipelineprobe.models import DbtModel
+
+    models = [
+        DbtModel(
+            name="documented",
+            tests_count=1,
+            last_run_status="success",
+            tags=[],
+            description="Orders fact table.",
+        ),
+        DbtModel(
+            name="empty_desc",
+            tests_count=1,
+            last_run_status="success",
+            tags=[],
+            description="",
+        ),
+        DbtModel(
+            name="whitespace_desc",
+            tests_count=1,
+            last_run_status="success",
+            tags=[],
+            description="  \n\t ",
+        ),
+    ]
+    issues = check_missing_descriptions({"dbt_models": models})
+    assert len(issues) == 2
+    affected = [res for issue in issues for res in issue.affected_resources]
+    assert affected == ["empty_desc", "whitespace_desc"]
+    assert all(issue.severity == "info" for issue in issues)
+    assert all(issue.category == "dbt" for issue in issues)
+
+
+def test_check_missing_descriptions_defaults_to_flagged():
+    from pipelineprobe.models import DbtModel
+
+    model = DbtModel(name="no_field", tests_count=1, last_run_status="success", tags=[])
+    issues = check_missing_descriptions({"dbt_models": [model]})
+    assert len(issues) == 1
 
 
 def test_check_failing_models():

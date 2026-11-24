@@ -22,7 +22,7 @@ A narrated demo (the GIF above is a short preview) on synthetic sample data from
 | Area | What it checks |
 |---|---|
 | **Airflow** | DAG failure rates, tasks with no retries, stale DAGs |
-| **dbt** | Models with zero tests, models whose last run failed |
+| **dbt** | Models with zero tests, models whose last run failed, models with no description |
 | **Warehouse** | Postgres: very large tables, tables missing `created_at` / `updated_at`. BigQuery / Snowflake: opt-in cost insights |
 | **Report** | 0–100 health score, critical / warning / info counts, severity filter, HTML + JSON |
 

@@ -7,6 +7,15 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [Unreleased]
+
+### Added
+- dbt rule `check_missing_descriptions`: flags models with an empty or
+  whitespace-only `description` in `manifest.json` as `info`, so existing
+  health scores are not affected. `DbtModel` gains a `description` field.
+
+---
+
 ## [0.3.2] — 2026-11-20
 
 ### Added

@@ -130,6 +130,21 @@ def test_dbt_connector_success(tmp_path):
                 "name": "users",
                 "unique_id": "model.test.users",
                 "tags": ["daily"],
+                "description": "All registered users.",
+            },
+            "model.test.orders": {
+                "resource_type": "model",
+                "name": "orders",
+                "unique_id": "model.test.orders",
+                "tags": [],
+                "description": "",
+            },
+            "model.test.legacy": {
+                "resource_type": "model",
+                "name": "legacy",
+                "unique_id": "model.test.legacy",
+                "tags": [],
+                "description": None,
             },
             "test.test.not_null_users_id": {
                 "resource_type": "test",
@@ -154,10 +169,14 @@ def test_dbt_connector_success(tmp_path):
     connector = DbtConnector(config)
 
     models = connector.get_models()
-    assert len(models) == 1
-    assert models[0].name == "users"
-    assert models[0].tests_count == 1
-    assert models[0].last_run_status == "success"
+    assert len(models) == 3
+    by_name = {m.name: m for m in models}
+    assert by_name["users"].tests_count == 1
+    assert by_name["users"].last_run_status == "success"
+    assert by_name["users"].description == "All registered users."
+    assert by_name["orders"].description == ""
+    # An explicit null in the manifest must not break model validation.
+    assert by_name["legacy"].description == ""
 
 
 @patch("httpx.Client")
